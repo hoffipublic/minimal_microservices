@@ -13,49 +13,49 @@ spring:
   #  allow-bean-definition-overriding: true
   jmx:
     enabled: false
-  # sleuth:
-  #   sampler:
-  #     probability: 1.0
-  #   annotation:
-  #     enabled: true
-  #   baggage-keys: # match CustomSlf4jCurrentTraceContext static Strings
-  #   - bpn
-  #   - bpid
-  #   - succ
-  #   log:
-  #     slf4j:
-  #       whitelisted-mdc-keys:
-  #       - bpn
-  #       - bpid
-  #       - succ
-  #   rxjava:
-  #     schedulers:
-  #       ignoredthreads:
-  #       - HystrixMetricPoller
-  #       - ^RxComputation.*$
-  #       - ^RxIoScheduler.*$
-  # zipkin:
-  #   enabled: true
-  #   base-url: ${ZIPKIN_URL:http://localhost:9411}
-  #   sender:
-  #     type: web
-
-opentracing:
-  jaeger:
-    ## kebab-case properties of io.opentracing.contrib.java.spring.jaeger.starter.JaegerConfigurationProperties
+  sleuth:
+    sampler:
+      probability: 1.0
+    annotation:
+      enabled: true
+    baggage-keys: # match CustomSlf4jCurrentTraceContext static Strings
+    - bpn
+    - bpid
+    - succ
+    log:
+      slf4j:
+        whitelisted-mdc-keys:
+        - bpn
+        - bpid
+        - succ
+    rxjava:
+      schedulers:
+        ignoredthreads:
+        - HystrixMetricPoller
+        - ^RxComputation.*$
+        - ^RxIoScheduler.*$
+  zipkin:
     enabled: true
-    enable-b3-propagation: true
-    # probabilistic-sampler:
-    #   sampling-rate: 0.5
-    # rate-limiting-sampler:
-    #   max-traces-per-second: 2.0
-    const-sampler:
-      decision: true
-    # udp-sender:
-    #   host: jaegerhost
-    #   port: 14268
-    http-sender:
-      url: http://localhost:14268/api/traces
+    base-url: http://localhost:14268/api/traces # ${ZIPKIN_URL:http://localhost:9411}
+    sender:
+      type: web
+
+# opentracing:
+#   jaeger:
+#     ## kebab-case properties of io.opentracing.contrib.java.spring.jaeger.starter.JaegerConfigurationProperties
+#     enabled: true
+#     enable-b3-propagation: true
+#     # probabilistic-sampler:
+#     #   sampling-rate: 0.5
+#     # rate-limiting-sampler:
+#     #   max-traces-per-second: 2.0
+#     const-sampler:
+#       decision: true
+#     # udp-sender:
+#     #   host: jaegerhost
+#     #   port: 14268
+#     http-sender:
+#       url: http://localhost:14268/api/traces
 
 app:
   info:

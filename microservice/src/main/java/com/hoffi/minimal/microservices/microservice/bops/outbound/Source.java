@@ -59,7 +59,7 @@ public class Source {
         BOP bop = BUSINESS_MODULE.createBOP(bopName);
         // MDCLocal.startChunk(bopName);
         Span bopSpan = tracer.buildSpan(bopName).start();
-        try (Scope bopScope = tracer.activateSpan(bopSpan)) {
+        try (Scope bopScope = tracer.scopeManager().activate(bopSpan, true)) {
             // customBaggage.startTrace("myCustomBpName", bop.toStringBopIds(), "sink1|somethingElse");
             
             MessageDTO messageDTO = MessageDTO.create(bop);

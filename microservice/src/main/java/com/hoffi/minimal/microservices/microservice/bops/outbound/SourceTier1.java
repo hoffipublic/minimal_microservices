@@ -86,7 +86,7 @@ public class SourceTier1 {
         BOP bop = BUSINESS_MODULE.createBOP(bopName);
         //MDCLocal.startChunk(bopName);
         Span bopSpan = tracer.buildSpan(bopName).start();
-        try (Scope bopScope = tracer.activateSpan(bopSpan)) {
+        try (Scope bopScope = tracer.scopeManager().activate(bopSpan, true)) {
             log.info("transform beginning for {}", payload);
 
             MessageDTO transformedPayload;
@@ -99,7 +99,7 @@ public class SourceTier1 {
 
             String newInnerChunk = "manualSpan";
             Span innerChunkSpan = tracer.buildSpan(newInnerChunk).start();
-            try (Scope innerChunkScope = tracer.activateSpan(innerChunkSpan)) {
+            try (Scope innerChunkScope = tracer.scopeManager().activate(bopSpan, true)) {
                 log.info("transform manualNewSpan start...");
 
                 MessageDTO beforePayload = transformedPayload;

@@ -81,7 +81,7 @@ public class SourceTier2 {
         BOP bop = BUSINESS_MODULE.createBOP(bopName);
         //MDCLocal.startChunk(bopName);
         Span bopSpan = tracer.buildSpan(bopName).start();
-        try (Scope bopScope = tracer.activateSpan(bopSpan)) {
+        try (Scope bopScope = tracer.scopeManager().activate(bopSpan, true)) {
             log.info("transform beginning for {}", payload);
 
             MessageDTO transformedPayload;

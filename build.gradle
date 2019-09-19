@@ -16,6 +16,7 @@ buildscript {
         maven { url 'https://repo.jenkins-ci.org/public/' } // only if using buildfiles/buildJenkins.gradle
         maven { url 'https://repo.spring.io/libs-milestone' } // only if using milestone spring stuff
         maven { url 'https://repo.spring.io/libs-snapshot' } // only if using snapshot spring stuff
+        maven { url 'https://repo.spring.io/libs-snapshot-local' } // only if using snapshot spring stuff
 
     }
     dependencies {

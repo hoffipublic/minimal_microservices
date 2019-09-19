@@ -15,16 +15,19 @@ dependencies {
     annotationProcessor "org.springframework.boot:spring-boot-configuration-processor" // for @ConfigurationProperties, make sure compileJava.dependsOn(processResources)
 
     implementation "org.springframework.boot:spring-boot-starter-web"
-
-    // // Caution: spring-cloud-sleuth-stream is deprecated and incompatible with these destinations.
-    // // implementation 'org.springframework.cloud:spring-cloud-starter-sleuth' // if using without zipkin
-    // implementation 'org.springframework.cloud:spring-cloud-starter-zipkin'
-    // implementation 'org.springframework.cloud:spring-cloud-sleuth-zipkin'
-
-    implementation "io.jaegertracing:jaeger-client:${v('jaegerClientVersion')}"
-    implementation "io.opentracing.contrib:opentracing-spring-jaeger-cloud-starter:${v('springJaegerCloud')}"
     implementation "org.springframework.cloud:spring-cloud-starter"
+
+    // Caution: spring-cloud-sleuth-stream is deprecated and incompatible with these destinations.
+    // implementation 'org.springframework.cloud:spring-cloud-starter-sleuth' // if using without zipkin
+    implementation 'org.springframework.cloud:spring-cloud-starter-zipkin'
+    implementation 'org.springframework.cloud:spring-cloud-sleuth-zipkin'
+    implementation 'io.opentracing.brave:brave-opentracing'
+    // // jaeger might be a replacement for sleuth and zipkin (obove) as soon as they support traceContext within slf4j MDC
+    // implementation "io.jaegertracing:jaeger-client:${v('jaegerClientVersion')}"
+    // implementation "io.opentracing.contrib:opentracing-spring-jaeger-cloud-starter:${v('springJaegerCloud')}"
     
+    //implementation "org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j:${versions.latest.snapshots['springCloudCircuitbreakerSnapshotVersion']}"
+
 
     implementation 'org.springframework.cloud:spring-cloud-stream'
     implementation 'org.springframework.amqp:spring-rabbit'

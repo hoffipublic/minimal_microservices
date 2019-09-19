@@ -2,7 +2,7 @@
 
 // import org.springframework.beans.factory.annotation.Autowired;
 // import org.springframework.stereotype.Component;
-// import brave.SpanCustomizer;
+// import io.opentracing.SpanCustomizer;
 // import io.opentracing.Tracer;
 
 // @Component

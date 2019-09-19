@@ -20,11 +20,11 @@ package com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging;
 //import org.slf4j.LoggerFactory;
 //import org.slf4j.MDC;
 //
-//import brave.internal.HexCodec;
-//import brave.internal.Nullable;
-//import brave.propagation.CurrentTraceContext;
-//import brave.propagation.ExtraFieldPropagation;
-//import brave.propagation.TraceContext;
+//import io.opentracing.internal.HexCodec;
+//import io.opentracing.internal.Nullable;
+//import io.opentracing.propagation.CurrentTraceContext;
+//import io.opentracing.propagation.ExtraFieldPropagation;
+//import io.opentracing.propagation.TraceContext;
 //
 ///**
 // * copied and extended from org.springframework.cloud.sleuth.log.CustomSlf4jCurrentTraceContext

@@ -1,0 +1,31 @@
+# env has to match ci/10setup/00scriptVariables.sh env
+env:             "sandbox"
+cf-api-url:      "https://api.sys.sandbox.platform.thalesdigital.io"
+cf-org:          "test-po"
+cf-space:        "dev"
+#git-repo:        "git@gitlab.com:hoffi_minimal/minimal_spring_cloud_services.git"
+git-repo:        "git@gitlab.thalesdigital.io:paas-pcf/minimal_spring_cloud_services.git"
+git-branch:      "master"
+buildExtStatus:  "RELEASE"
+buildExtVersion: "1.0.1"
+appMemory:       "1G"
+appDisk:         "256M"
+appInstances:    1
+javaBuildpack:   java_online
+sourceAppName:        circuitbreakers_source # has to match circuitbreakers/cf/manifest_...yml
+tier1AppName:         circuitbreakers_tier1  # has to match circuitbreakers/cf/manifest_...yml
+tier2AppName:         circuitbreakers_tier2  # has to match circuitbreakers/cf/manifest_...yml
+sinkAppName:          circuitbreakers_sink   # has to match circuitbreakers/cf/manifest_...yml
+rabbitServiceName:          p-rabbitmq
+rabbitServicePlan:          standard
+rabbitInstanceName:         testpoRabbitShared
+registryServiceName:        p-service-registry
+registryServicePlan:        standard
+registryInstanceName:       testpoServiceRegistry # has to match application.yml vcap.services.THIS.credentials.uri
+circuitBreakerServiceName:  p-circuit-breaker-dashboard
+circuitBreakerServicePlan:  standard
+circuitBreakerInstanceName: testpoCircuitBreaker
+configServerServiceName:    p-config-server
+configServerServicePlan:    standard
+configServerInstanceName:   testpoConfigServer
+configServerGitRepoUri:     git@gitlab.thalesdigital.io:paas-pcf/testpoConfigServerRepo.git

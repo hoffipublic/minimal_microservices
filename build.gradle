@@ -1,0 +1,152 @@
+import groovy.json.JsonSlurper
+import org.gradle.internal.logging.text.StyledTextOutput 
+import org.gradle.internal.logging.text.StyledTextOutputFactory
+import org.gradle.internal.logging.text.StyledTextOutput.Style
+
+buildscript {
+    ext {
+        versions = new JsonSlurper().parseFile(rootProject.file('dependencies.json'), 'UTF-8')
+        v = {  x -> versions.latest.default[x] } // helper function to acces slurped linked dependencies.json latest versions
+        vp = { x -> versions.latest.plugin[x] } // helper function to acces slurped linked dependencies.json latest versions for gradle plugins
+    }
+    repositories {
+        mavenLocal()
+        jcenter()
+        maven { url 'http://repo.spring.io/plugins-release' }
+        maven { url 'https://repo.jenkins-ci.org/public/' } // only if using buildfiles/buildJenkins.gradle
+        maven { url 'https://repo.spring.io/libs-milestone' } // only if using milestone spring stuff
+        maven { url 'https://repo.spring.io/libs-snapshot' } // only if using snapshot spring stuff
+
+    }
+    dependencies {
+        classpath "io.spring.gradle:dependency-management-plugin:${v('dependencyManagementPluginVersion')}"
+        classpath "org.jfrog.buildinfo:build-info-extractor-gradle:latest.release"
+        classpath "io.spring.gradle:propdeps-plugin:${vp('propdepsPluginVersion')}" // https://github.com/spring-gradle-plugins/propdeps-plugin/releases
+        classpath "org.cloudfoundry:cf-gradle-plugin:${vp('cfGradlePluginVersion')}"
+        classpath "gradle.plugin.com.terrafolio:gradle-jenkins-plugin:${vp('jenkinsPluginVersion')}"
+        classpath "com.bmuschko:gradle-docker-plugin:${vp('dockerPluginVersion')}"
+
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:${v('springBootVersion')}" // only if using milestones, otherwise in plugins { } section
+        classpath "org.yaml:snakeyaml:${v('snakeYamlVersion')}" // https://bitbucket.org/asomov/snakeyaml/wiki/Documentation
+    }
+}
+
+plugins {
+    id 'com.gorylenko.gradle-git-properties' version "2.1.0" apply false
+    id 'maven-publish' // needed for com.jfrog.atifactory
+    id 'com.jfrog.artifactory' version '4.9.9' // "${artifactoryPluginVersion}"
+}
+apply plugin: 'org.springframework.boot' // only if using milestones, otherwise in plugins { } section
+
+// externalised "global" variables/properties/settings
+// project and subproject wide used definitions
+// also needed for the apply from: gradle script includes below
+ext {
+    // only project specific vaulues, generic values go into buildExt.gradle
+    baseName = rootProject.name // from settings.gradle also used as artifactId in buildfiles/buildArtifactory.gradle
+    group = 'demo' // maven artifact group 
+    groupId = group
+    //version = '0.1.0' // versions defined by current branch in buildExt.gradle
+}
+
+apply from: project.rootProject.projectDir.toString() + '/buildfiles/buildHelpers.gradle' // generic helper functions within ext { ... } callable by project.<helper>
+apply from: project.rootProject.projectDir.toString() + '/buildExt.gradle' // further generic project wide ext { ... } settings
+apply from: project.rootProject.projectDir.toString() + '/buildfiles/buildDocs.gradle' // further generic project wide ext { ... } settings
+
+println "================================================================================"
+println "RootProject Group: ${project.rootProject.ext.baseName}:${project.rootProject.ext.version}" + lastThreeDirsOf(projectDir)
+println "================================================================================"
+
+gradle.projectsEvaluated {
+    println "Evaluation of all multiproject gradle buildfiles completed\n"
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'eclipse'
+    apply plugin: 'idea'
+    apply plugin: 'io.spring.dependency-management'
+    apply plugin: 'org.springframework.boot'
+    apply plugin: 'com.gorylenko.gradle-git-properties'
+    apply plugin: 'propdeps'
+    apply plugin: 'propdeps-maven'
+    apply plugin: 'propdeps-eclipse'
+    apply plugin: 'propdeps-idea'
+
+    //project.sourceCompatibility = JavaVersion.VERSION_1_8
+    //project.targetCompatibility = JavaVersion.VERSION_1_8
+    project.sourceCompatibility = JavaVersion.VERSION_11
+    project.targetCompatibility = JavaVersion.VERSION_11
+
+    dependencyManagement {
+        imports {
+            // mavenBom 'org.springframework.boot:spring-boot-starter-parent:2.1.1.RELEASE'
+            mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
+            mavenBom "org.springframework.cloud:spring-cloud-dependencies:${v('springCloudVersion')}"
+            //mavenBom "org.springframework.cloud:spring-cloud-contract-dependencies:${v('springCloudContractVersion')}"
+        }
+    }
+
+    repositories {
+        mavenLocal()
+        jcenter()
+        maven { url "https://repo.spring.io/milestone" } // only if using milestone spring stuff
+        maven { url 'https://repo.spring.io/libs-snapshot' } // only if using snapshot spring stuff
+    }
+
+    clean.doFirst {
+        println "> cleaning: ${project.name} ${buildDir}"
+    }
+ 
+    compileJava .doFirst {
+        println "> compileJava: ${project.name}"
+    }
+
+    bootJar.doFirst {
+        println "> create boot jar for ${project.name}"
+    }
+
+    // println "================================================================================"
+    // println "Project: ${project.name}: ${project.baseName}"
+    // println "================================================================================"
+    task springBootVersionsPrint(group:project.rootProject.ext.group, description:"extract spring boot version") {
+        dependsOn subprojects.build
+        doLast {
+            def jarSet = [].toSet()
+            project.configurations.compile.findAll {
+                it.path.contains("/spring-cloud-starter/") || it.path.contains("/spring-boot-starter/")
+            }.each { jarSet.add(it.name) }
+            jarSet.sort().each { if(it =~ /spring-cloud-starter/) { printf("%-25s: %s\n", project.name, "spring-cloud-dependencies:${v('springCloudVersion')}") }; printf("%-25s: %s\n", project.name, it.replace(".jar", "")) }
+        }
+    }
+    build.finalizedBy springBootVersionsPrint
+}
+
+// rootProject is no java project, so we "fake" the build task for it after all subprojects.build
+// to copy the subproject jars to rootProject.buildDir/libs
+task build(type: Copy, dependsOn: subprojects.build) {
+        // from subprojects.collect { it.tasks.withType(AbstractArchiveTask) }
+        from subprojects.collect { it.tasks.withType(Jar) }
+        into project.rootProject.buildDir.toString() + "/libs"
+}
+build.finalizedBy branchVersionsPrint
+
+task springBootVersionsPrint(group:project.rootProject.ext.group, description:"extract spring boot version") {
+    dependsOn subprojects.build
+    doLast {
+        // project.configurations.compile.each { println it.name }
+        def jarSet = [].toSet()
+        subprojects.each { subproject ->
+            subproject.configurations.compile.findAll {
+                it.path.contains("/spring-cloud-starter/") || it.path.contains("/spring-boot-starter/")
+            }.each { jarSet.add(it.name) }
+            jarSet.sort().each { if(it =~ /spring-cloud-starter/) { printf("%-25s: %s\n", subproject.name, "spring-cloud-dependencies:${v('springCloudVersion')}") }; printf("%-25s: %s\n", subproject.name, it.replace(".jar", "")) }; println ""
+        }
+    }
+}
+
+// rootProject is no java project, so we "fake" the clean task for it
+// so all subproject.clean tasks run and this one, if called from rootProject
+task clean(group:project.rootProject.ext.group, type: Delete, description:"clean jars from subprojects") {
+    delete fileTree(project.buildDir).include('**/*')
+}

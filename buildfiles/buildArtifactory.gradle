@@ -1,0 +1,46 @@
+
+//artifactoryDeploy.dependsOn(generatePomFileForMavenJavaPublication)
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+//            artifact(file("$buildDir/publications/mavenJava/pom-default.xml"))
+//            artifact(file("$buildDir/libs/${project.baseName}-${project.rootProject.ext.version}.jar"))
+        }
+    }
+}
+// build.finalizedBy publishToMavenLocal // push jars to mavenLocal after build
+
+
+artifactory {
+  contextUrl = project.getConfigProp('artifactory.url')   //The base Artifactory URL if not overridden by the publisher/resolver
+  publish {
+    contextUrl = project.getConfigProp('artifactory.url') //The base Artifactory URL for the publisher
+    //A closure defining publishing information
+    repository {
+      repoKey = project.rootProject.versionBranchStatusHash()[branch]['publishRepoKey']
+      username = project.getConfigProp('artifactory.user')   //The publisher user name
+      password = project.getConfigProp('artifactory.pass')   //The publisher password
+      maven = true
+    }
+    defaults {
+        //List of Gradle Publications (names or objects) from which to collect the list of artifacts to be deployed to Artifactory.
+        publications ('mavenJava')
+//        publishConfigs('archives') // we always use archives
+        
+        publishBuildInfo = true   //Publish build-info to Artifactory (true by default)
+        publishArtifacts = true   //Publish artifacts to Artifactory (true by default)
+        publishPom = true   //Publish generated POM files to Artifactory (true by default).
+        publishIvy = false   //Publish generated Ivy descriptor files to Artifactory (true by default).
+    }
+  }
+  // Redefine basic properties of the build info object
+  clientConfig.setIncludeEnvVars(true)
+  clientConfig.setEnvVarsExcludePatterns('*pass*,*secret*')
+  clientConfig.setEnvVarsIncludePatterns('*not-secret*')
+  clientConfig.info.addEnvironmentProperty('test.adding.dynVar',new java.util.Date().toString())
+  clientConfig.info.setBuildName("${project.baseName}_${project.ext.environment}_build_${project.rootProject.ext.branch}")
+  clientConfig.info.setBuildNumber(utctimepostfix)
+  clientConfig.timeout = 300 // Artifactory connection timeout (in seconds). The default timeout is 300 seconds.
+}

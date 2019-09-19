@@ -1,0 +1,157 @@
+logging:
+  level:
+    #ROOT: DEBUG
+    org.springframework.boot.context.config.ConfigFileApplicationListener: DEBUG
+    #org.springframework.cloud.sleuth: DEBUG
+    brave: DEBUG
+  pattern:
+      # from org.springframework.cloud.sleuth.autoconfig.TraceEnvironmentPostProcessor
+    level: "%5p [${spring.zipkin.service.name:${spring.application.name:-}},%X{X-B3-TraceId:-},%X{X-B3-SpanId:-},%X{X-Span-Export:-}] [%X{bpn:-},%X{bpid:-},%X{succ:-}] [%X{chunk:-}]"
+
+spring:
+  #main:
+  #  allow-bean-definition-overriding: true
+  jmx:
+    enabled: false
+  # sleuth:
+  #   sampler:
+  #     probability: 1.0
+  #   annotation:
+  #     enabled: true
+  #   baggage-keys: # match CustomSlf4jCurrentTraceContext static Strings
+  #   - bpn
+  #   - bpid
+  #   - succ
+  #   log:
+  #     slf4j:
+  #       whitelisted-mdc-keys:
+  #       - bpn
+  #       - bpid
+  #       - succ
+  #   rxjava:
+  #     schedulers:
+  #       ignoredthreads:
+  #       - HystrixMetricPoller
+  #       - ^RxComputation.*$
+  #       - ^RxIoScheduler.*$
+  # zipkin:
+  #   enabled: true
+  #   base-url: ${ZIPKIN_URL:http://localhost:9411}
+  #   sender:
+  #     type: web
+
+opentracing:
+  jaeger:
+    ## kebab-case properties of io.opentracing.contrib.java.spring.jaeger.starter.JaegerConfigurationProperties
+    enabled: true
+    enable-b3-propagation: true
+    # probabilistic-sampler:
+    #   sampling-rate: 0.5
+    # rate-limiting-sampler:
+    #   max-traces-per-second: 2.0
+    const-sampler:
+      decision: true
+    # udp-sender:
+    #   host: jaegerhost
+    #   port: 14268
+    http-sender:
+      url: http://localhost:14268/api/traces
+
+app:
+  info:
+    application_id: ${vcap.application.application_id:local}
+    instance_index: ${vcap.application.instance_index:0}
+    instance_id: ${vcap.application.instance_id:local}
+  sources:
+    fixedDelay: 5000
+  businessLogic:
+    # tier name has to be given on command line or environment variable app.businessLogic.tier see scripts/run_microservice.sh
+    tier: fixedfromapplicationproperties
+    # @HystrixProperty(name = "execution.isolation.thread.timeoutInMilliseconds", value = "3000")
+    # Tier1 has 4 businessLogic methods and Tier2 has 3 businessLogicMethods
+    sleepMin: 265
+    sleepMax: 1000
+
+eureka:
+ client:
+   service-url:
+     # cloudfoundry service instance name: vcap.services.HERE.credential.uri
+     # has to match environments.config serviceInstanceName
+     # has to match ci/variables.yml registryInstanceName
+     defaultZone: ${vcap.services.testpoServiceRegistry.credentials.uri:http://localhost:8761}/eureka/
+
+my:
+  test:
+    property: "from application.yml"
+    
+---
+
+spring:
+  profiles: source
+  cloud:
+    stream:
+      bindings:
+        minimal-SourceTo1: # has to match channels.SourceChannels.OUTPUT
+          destination: minimal-SourceTo1
+          contentType: application/json
+
+---
+
+spring:
+  profiles: tier1
+  cloud:
+    stream:
+      bindings:
+        minimal-SourceTo1: # has to match channels.Tier1Channels.INPUT
+          group: tier1s
+          destination: minimal-SourceTo1
+          contentType: application/json
+        minimal-1To2: # has to match channels.SourceChannels.OUTPUT
+          destination: minimal-1To2
+          contentType: application/json
+
+---
+
+spring:
+  profiles: tier2
+  cloud:
+    stream:
+      bindings:
+        minimal-1To2: # has to match channels.Tier2Channels.INPUT
+          group: tier2
+          destination: minimal-1To2
+          contentType: application/json
+        minimal-2ToSink: # has to match channels.Tier2Channels.OUTPUT
+          destination: minimal-2ToSink
+          contentType: application/json
+
+---
+
+spring:
+  profiles: sink
+  cloud:
+    stream:
+      bindings:
+        minimal-2ToSink: # has to match channels.SinkChannels.INPUT
+          group: sink
+          destination: minimal-2ToSink
+          contentType: application/json
+
+---
+
+spring:
+  profiles: local
+  cloud:
+    stream:
+      default-binder: local_rabbit
+      binders:
+        local_rabbit:
+          type: rabbit
+          environment:
+            spring:
+              rabbitmq:
+                host: localhost
+                port: 5672
+#                username: <username>
+#                password: <password>
+#                virtual-host: /

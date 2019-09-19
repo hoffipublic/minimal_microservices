@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: minimal_microservice
+  banner:
+    location: classpath:/banner.txt
+
+server:
+  port: ${vcap.application.port:8080}
+
+management:
+  info:
+    git:
+      mode: "full"
+  endpoints:
+    enabled-by-default: true
+    web:
+      exposure:
+        include: "*"
+
+---
+
+spring:
+  profiles: local
+  cloud:
+    config:
+      # vcap.services.XXXXXXXXXXXXXXX.credentials.uri has to exactly be the name of the service instance as shown with cf services
+      # if there is no env var vcap... then it will default to localhost port 8888 (default config server port)
+      uri: ${http://localhost:8888}
+      failFast: false # if true fail (exit) if the config server is not reached on startup
+
+---
+
+spring:
+  profiles: cloud
+
+management:
+  cloudfoundry:
+    enabled: true # Whether to enable extended Cloud Foundry actuator endpoints.
+    skip-ssl-validation: true

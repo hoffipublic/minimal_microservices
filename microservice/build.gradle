@@ -1,0 +1,204 @@
+import org.gradle.internal.logging.text.StyledTextOutput 
+import org.gradle.internal.logging.text.StyledTextOutputFactory
+import org.gradle.internal.logging.text.StyledTextOutput.Style
+
+project.ext.baseName = 'minimal_microservice' // also used as artifactId in buildfiles/buildArtifactory.gradle
+project.archivesBaseName = project.ext.baseName
+group = project.rootProject.ext.group
+baseName = project.ext.baseName
+version = project.rootProject.ext.version
+project.ext.port = 8761 // this must match the port set in src/main/resources/bootstrap.yml
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation "org.springframework.boot:spring-boot-starter-actuator"
+    annotationProcessor "org.springframework.boot:spring-boot-configuration-processor" // for @ConfigurationProperties, make sure compileJava.dependsOn(processResources)
+
+    implementation "org.springframework.boot:spring-boot-starter-web"
+
+    // // Caution: spring-cloud-sleuth-stream is deprecated and incompatible with these destinations.
+    // // implementation 'org.springframework.cloud:spring-cloud-starter-sleuth' // if using without zipkin
+    // implementation 'org.springframework.cloud:spring-cloud-starter-zipkin'
+    // implementation 'org.springframework.cloud:spring-cloud-sleuth-zipkin'
+
+    implementation "io.jaegertracing:jaeger-client:${v('jaegerClientVersion')}"
+    implementation "io.opentracing.contrib:opentracing-spring-jaeger-cloud-starter:${v('springJaegerCloud')}"
+    implementation "org.springframework.cloud:spring-cloud-starter"
+    
+
+    implementation 'org.springframework.cloud:spring-cloud-stream'
+    implementation 'org.springframework.amqp:spring-rabbit'
+    implementation 'org.springframework.cloud:spring-cloud-stream-binder-rabbit'
+
+    // implementation 'org.springframework.cloud:spring-cloud-starter-netflix-hystrix'
+
+    
+    // spring-boot-starter-test already includes the following provided libraries
+    // AssertJ
+    // Hamcrest
+    // Mockito
+    // JSONassert
+    // JsonPath
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.security:spring-security-test")
+    testImplementation("org.junit.jupiter:junit-jupiter-api")
+    testImplementation("org.junit.jupiter:junit-jupiter-params")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
+    testImplementation('org.springframework.cloud:spring-cloud-stream-test-support') // messaging test support for spring-cloud-stream
+    testImplementation(
+    // localGroovy(), // use gradles internal version of groovy
+        "org.codehaus.groovy:groovy-all:${versions.latest.groovy['groovyAllVersion']}",
+        "org.spockframework:spock-core:${versions.latest.groovy['spockVersion']}",
+        "org.spockframework:spock-spring:${versions.latest.groovy['spockVersion']}",
+    )
+//    testCompile("de.demo:minimal_microservices:${version}:stubs") {
+//        transitive = false
+//    }
+}
+
+compileJava.dependsOn(processResources)
+
+apply plugin: 'maven-publish'
+apply plugin: 'com.jfrog.artifactory'
+//apply plugin: 'com.terrafolio.jenkins'
+
+apply plugin: 'cloudfoundry'
+//apply plugin: 'docker'
+apply from: project.rootProject.projectDir.toString() + '/buildfiles/buildEnv.gradle' // read environments.config
+apply from: project.rootProject.projectDir.toString() + '/buildfiles/buildCf.gradle'  // showCfTargetAndLogin, showCfCmds and generateCfCmds
+//apply from: project.rootProject.projectDir.toString() + '/buildfiles/buildDocker.gradle'
+apply from: project.rootProject.projectDir.toString() + '/buildfiles/buildArtifactory.gradle'
+//apply from: project.rootProject.projectDir.toString() + '/buildfiles/buildJenkins.gradle'
+apply from: project.rootProject.projectDir.toString() + '/buildfiles/buildMisc.gradle' // showBootRunCommand
+
+apply from: project.rootProject.projectDir.toString() + '/buildfiles/buildSpringConfig.gradle'
+apply from: project.rootProject.projectDir.toString() + '/buildfiles/buildVscode.gradle'
+
+publishing {
+    // gradle publishToMavenLocal
+    // find ~/.m2/repository -type f -name '*microservices*' | xargs ls -lh | sed -E 's/^(.*) \/.*\.m2\/repository\/(.*)/\1 \2/'
+    publications {
+        maven(MavenPublication) {
+            groupId = groupId
+            artifactId = baseName
+            version = version
+
+            from components.java
+        }
+    }
+    //   repositories {
+    //        maven {
+    //            credentials { ... }
+    //
+    //            if (project.version.endsWith('-SNAPSHOT'))
+    //                url "http://localhost:8081/artifactory/libs-snapshot-local"
+    //            else
+    //                url "http://localhost:8081/artifactory/libs-release-local"
+    //        }
+    //    }
+    
+}
+build.finalizedBy publishToMavenLocal // push jars to mavenLocal after build
+
+// whatIsPublished(group:publishing, description:"what is published to maven repo") {
+//    doLast {
+//    find /Users/hoffmd9/.m2/repository -type f -name '*minimal_microservicess*' | xargs ls -l
+//    }
+//}
+//publishToMavenLocal.finalizedBy whatIsPublished
+//publishPubNamePublicationToMavenLocal.finalizedBy whatIsPublished
+
+//configuration {
+//    contracts {
+//        transitive = false
+//    }
+//}
+
+compileJava {
+    // options.compilerArgs += ["--add-modules", "java.xml.bind"]
+    println "Gradle version: " + project.getGradle().getGradleVersion()
+    println "Groovy version: " + GroovySystem.getVersion()
+    println "javac  version: " + org.gradle.internal.jvm.Jvm.current() + ' with compiler args: ' + options.compilerArgs
+    
+}
+//compileTestJava {
+//    // options.compilerArgs += ["--add-modules", "java.xml.bind"]
+//  println 'compileTestJava with version ' + org.gradle.internal.jvm.Jvm.current() + ' with compiler args: ' + options.compilerArgs
+//}
+
+springBoot {
+    mainClassName = "com.hoffi.minimal.microservices.microservice.MicroserviceApplication"
+
+    // This statement tells the Gradle Spring Boot plugin to generate a file
+    // build/resources/main/META-INF/build-info.properties
+    // that is picked up by Spring Boot to display via actuator /info endpoint.
+    buildInfo {
+        properties {
+            // Generate extra build info.
+            additional = additionalBuildInfo(project) // from buildfiles/buildMisc.gradle
+        }
+    }
+}
+
+compileJava.dependsOn(processResources)
+
+bootJar {
+    launchScript() // make the fat.jar executable (e.g. for sudo ln -s /var/myapp/myapp.jar /etc/init.d/myapp)
+    doLast {
+        println "${project.group}:${project.baseName}:${project.version} ==> ./build/libs/" + jar.archivePath.name
+    }
+}
+
+bootRun { systemProperties = System.properties } // ensure Gradle passes command line arguments to the JVM
+
+jar {
+    baseName = project.ext.baseName // from buildExt.gradle
+    version = project.rootProject.ext.version // from buildExt.gradle
+    manifest {
+        attributes 'Implementation-Title' : project.ext.baseName,
+                   'Implementation-Version' : project.rootProject.ext.version,
+                   'provider': 'gradle'
+    }
+}
+
+// Once we call ./gradlew generateContractTests
+// the Spring Cloud Contract Gradle plugin will now generate a JUnit test in the folder build/generated-test-sources
+// and ./gradlew publishToMavenLocal
+test {
+    useJUnitPlatform {
+//        includeTags 'fast'
+//        excludeTags 'app', 'integration', 'messaging', 'slow', 'trivial'
+    }
+    failFast = false
+    ignoreFailures true
+    reports.html.enabled = false
+
+    testLogging {
+        showStandardStreams = false
+        exceptionFormat = 'full'
+        events "PASSED", "FAILED", "SKIPPED" //, "STARTED" //, "standardOut", "standardError"
+    }
+
+    beforeTest { descriptor ->
+        logger.lifecycle("Running test: " + descriptor)
+    }
+    // listen to standard out and standard error of the test JVM(s)
+    onOutput { descriptor, event ->
+        // logger.lifecycle("Test: " + descriptor + " produced standard out/err: " + event.message )
+        event.message
+    }
+    afterSuite { desc, result ->
+        if (!desc.parent) { // will match the outermost suite
+            def out = services.get(StyledTextOutputFactory).create("an-ouput")
+            if (result.failedTestCount <= 0) {
+                out.style(Style.Success).println "\nTest Results: ${result.resultType} (${result.testCount} tests, ${result.successfulTestCount} successes, ${result.failedTestCount} failures, ${result.skippedTestCount} skipped)"
+            } else {
+                out.style(Style.Failure).println "\nTest Results: ${result.resultType} (${result.testCount} tests, ${result.successfulTestCount} successes, ${result.failedTestCount} failures, ${result.skippedTestCount} skipped)"
+            }
+        }
+    }
+}
+
+clean.doFirst {
+    // delete "~/.m2/repository/com/example/http-server-dsl-gradle"
+}

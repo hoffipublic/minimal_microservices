@@ -1,0 +1,175 @@
+import org.yaml.snakeyaml.Yaml
+import java.util.Map
+import java.util.TreeMap
+import java.util.List
+import java.util.LinkedList
+import java.util.LinkedHashSet
+import java.util.function.BiFunction
+buildscript {
+    repositories {
+        jcenter()
+        mavenLocal()
+    }
+    dependencies {
+        classpath "org.yaml:snakeyaml:1.23" // https://bitbucket.org/asomov/snakeyaml/wiki/Documentation
+    }
+}
+
+configure(project) {
+    loadSpringAppconfigs()
+    ext {
+        // =====================================================================
+        // reference a application.yml spring config value within gradle build
+        // =====================================================================
+        getSpringAppconfig = { key ->
+            Object foundAppconfigValue
+            for (String otherProfileName : project.ext.appconfigOtherProfileNames) {
+                if (project.ext.springProfilesActive.contains(otherProfileName)) {
+                    foundAppconfigValue = getValueOfCompoundKey(key, project.ext.appconfig[otherProfileName])
+                }
+                if (foundAppconfigValue != null) {
+                    break
+                }
+            }
+            if (foundAppconfigValue == null) {
+                foundAppconfigValue = getValueOfCompoundKey(key, project.ext.appconfig['default'])
+            }
+            if (foundAppconfigValue == null) {
+                throw new GradleException("appconfig key '${key}' neither found in any active profile ${project.ext.springProfilesActive} nor in default profile of ${project.ext.appconfigSpringConfigFiles}")
+            }
+            return foundAppconfigValue
+        }
+        getSpringAppconfigOfProfile = { profileName, key ->
+            Object foundAppconfigValue
+            if (project.ext.appconfigProfileNames.contains(profileName)) {
+                foundAppconfigValue = getValueOfCompoundKey(key, project.ext.appconfig[profileName])
+            } else {
+                throw new GradleException("getAppconfigOfProfile() called for undefined profile '${profileName}'")
+            }
+            if (foundAppconfigValue == null) {
+                throw new GradleException("getAppconfigOfProfile() key '${key}' not found in profile '${profileName}' of ${project.ext.appconfigSpringConfigFiles}")
+            }
+            return foundAppconfigValue
+        }
+    }
+}
+
+def loadSpringAppconfigs() {
+    project.ext.set('springProfilesActive', System.env.SPRING_PROFILES_ACTIVE == null ? ["default"]: System.env.SPRING_PROFILES_ACTIVE.split(','))
+    project.ext.set('appconfigSpringConfigFiles', ["src/main/resources/application.yml", "src/main/resources/bootstrap.yml"])
+    project.ext.set('appconfig', new TreeMap())
+    project.ext.set('appconfigProfileNames', new LinkedHashSet())
+    project.ext.set('appconfigOtherProfileNames', new LinkedHashSet())
+    project.ext.set('appconfigSpringConfigFilesDefined', new LinkedList())
+    Yaml parser = new Yaml()
+    int counter = 0;
+    for (String configFile : project.ext.appconfigSpringConfigFiles) {
+        if (new File("${project.projectDir}/${configFile}").exists()) {
+            project.ext.appconfigSpringConfigFilesDefined.add(configFile)
+        } else {
+            continue
+        }
+        for (Object data : parser.loadAll(("${project.projectDir}/${configFile}" as File).text)) {
+            Map<String, Object> map = (Map<String, Object>)data
+            String profileName = "default"
+            if (map.containsKey("spring")) {
+                if ( ((Map)map["spring"]).containsKey("profiles") ) {
+                    profileName = ((Map)map["spring"]).get("profiles", "default")
+                }
+            }
+            // remember profile names
+            project.ext.appconfigProfileNames.add(profileName)
+            if (profileName != 'default') {
+                project.ext.appconfigOtherProfileNames.add(profileName)
+            }
+            // add all profile specific key/values to map under its profile name into project.ext.appconfig
+            project.ext.appconfig[profileName] = deepMergeMaps(0, map, project.ext.appconfig[profileName], new LinkedList<String>(), "profile '${profileName}' in ${project.ext.appconfigSpringConfigFiles} ")
+            counter++;
+        }
+    }
+    if ( counter == 1) {
+        println "loadSpringAppconfigs() parsed ${project.ext.appconfigSpringConfigFilesDefined} \nfound only definitions for profile: default"
+    } else {
+        println "loadSpringAppconfigs() parsed ${project.ext.appconfigSpringConfigFilesDefined} \nfound ${counter-1} yaml documents overall in them which define profiles: " + project.ext.appconfigOtherProfileNames.join(",")
+    }
+    println "SPRING_PROFILES_ACTIVE: ${project.ext.springProfilesActive}"
+    //println parser.dump(project.ext.appconfig)
+}
+
+// helper function for getSpringAppconfig*()
+def getValueOfCompoundKey(String compoundKey, Map<String, Object> valueMapOfMaps) {
+    return getValueOfCompoundKey((LinkedList)Arrays.asList(compoundKey.split('\\.')), valueMapOfMaps)
+}
+// helper function for getSpringAppconfig*()
+def getValueOfCompoundKey(LinkedList compoundKey, Map<String, Object> valueMapOfMaps) {
+    LinkedList sofar = []
+    return getValueOfCompoundKeyRecursion(0, sofar, compoundKey, valueMapOfMaps)
+}
+// helper function for getAppconfig*()
+def getValueOfCompoundKeyRecursion(int index, LinkedList sofar, LinkedList compoundKey, Map<String, Object> valueMapOfMaps) {
+//println "index: ${index} sofar: '" + sofar.join('.') + "' compoundKey: '" + compoundKey.join('.') + "' map: '" + valueMapOfMaps.keySet() + "'"
+    String currentKeyPart = compoundKey.get(index)
+    sofar.add(currentKeyPart)
+    if (valueMapOfMaps.containsKey(currentKeyPart)) {
+        Object o = valueMapOfMaps.get(currentKeyPart)
+        if (o instanceof Map<String, Object>) {
+            return getValueOfCompoundKeyRecursion(++index, sofar, compoundKey, o)
+        } else {
+            if (o instanceof String) {
+                String s = (String)o
+                if (s.startsWith('${') && s.endsWith('}')) {
+                    s = s.substring(2);
+                    s = s.substring(0, s.length() - 1);
+                    int indexOfColon = s.indexOf(":");
+                    String variable = indexOfColon >= 0 ? s.substring(0, indexOfColon) : s;
+                    String defaultValue = indexOfColon >= 0 ? s.substring(indexOfColon + 1, s.length()) : null;
+                    String value = System.env.get(variable)
+                    if (value != null) { return value }
+                    value = System.env.get(variable.toUpperCase())
+                    if (value != null) { return value }
+                    value = System.env.get(variable.replace('.', '_'))
+                    if (value != null) { return value }
+                    value = System.env.get(variable.replace('.', '_').toUpperCase())
+                    if (value != null) { return value }
+                    try {
+                        value = project.ext.getSpringAppconfig(variable)
+                        return value
+                    } catch(GradleException ex) {
+                        value = defaultValue
+                        return value
+                    }
+                }
+            }
+            return o
+        }
+    }
+}
+// helper function for loadSpringAppconfigs() to merge (profile specific) key/values from e.g. application.yml and bootstrap.yml
+def deepMergeMaps(int index, Map<String, Object> toMergeMap1, Map<String, Object> toMergeMap2, LinkedList<String> keyPartsList, String description) {
+    Map<String, Object> resultMap = new TreeMap<>(toMergeMap1);
+    if (toMergeMap2 == null) {
+        return resultMap
+    }
+    LinkedList<String> exceptionTexts = new LinkedList<>()
+    for (Map.Entry entryFrom2 : toMergeMap2.entrySet()) {
+        String currentKey = entryFrom2.getKey()
+        Object value1 = resultMap.get(entryFrom2.getKey())
+        Object value2 = entryFrom2.getValue()
+        
+        if ( (value2 instanceof Map) && (value1 instanceof Map) ) {
+            keyPartsList.addLast(currentKey)
+            Map<String, Object> innerMap = deepMergeMaps(index+1, (Map)value1, (Map)value2, keyPartsList, description)
+            keyPartsList.removeLast()
+            resultMap.put(currentKey, innerMap)
+        } else {
+            if (resultMap.containsKey(entryFrom2.getKey()) && (value1 != value2) ) {
+                exceptionTexts.add("Both of ${description} contain non-java.util.Map key " + keyPartsList.join('.') + ".${currentKey} with different values '${value1}' != '${value2}'")
+            }
+            resultMap.put(currentKey, value2)
+        }
+    }
+    if (!exceptionTexts.isEmpty()) {
+        throw new GradleException(exceptionTexts.join('\n'))
+    }
+    return resultMap
+}

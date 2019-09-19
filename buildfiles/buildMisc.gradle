@@ -1,0 +1,94 @@
+
+task printClasspath(group:project.rootProject.ext.group, description:"print classpath") {
+    dependsOn subprojects.build
+    doLast {
+        // filters only existing and non-empty dirs
+        sourceSets.main.runtimeClasspath
+            .filter { (it.isDirectory() && it.listFiles().length > 0) || it.isFile() }
+            .each{ println it }
+    }
+}
+
+task showBootRunCommand(group:project.rootProject.ext.group, description:"show how to locally run the spring boot app") {
+    doLast {
+        println "for user: " + System.getProperty('user.name', 'default')
+        println "java -jar build/libs/${project.baseName}-${project.rootProject.ext.version}.jar --spring.profiles.active=<activeProfilesFromSrc/main/resources/application.yml>"
+        println "java -jar build/libs/${project.baseName}-${project.rootProject.ext.version}.jar --spring.profiles.active=<springProfilesFromEnvironments.config>"
+        //localBootRunArgs.each { k, v -> print "-D${k}=${v} " }
+        println "e.g.: (property key/values from src/main/resource/application.(yml|properties)"
+        println "========= Spring boot run command - START ========="
+        def generatedBootRunCmdProps = generateBootRunCmdProps(project, System.getProperty('user.name', 'default'))
+        println "java -jar build/libs/${project.baseName}-${project.rootProject.ext.version}.jar" + generatedBootRunCmdProps
+        println "========= Spring boot run command - END ==========="
+    }
+}
+//showBootRunCommand.dependsOn.remove("test")
+showBootRunCommand.dependsOn build
+
+configure(project) {
+    ext {
+        additionalBuildInfo = { subproject ->
+            def JOB_NAME = System.env.JOB_NAME
+            def GIT_COMMIT = System.env.GIT_COMMIT
+            def BUILD_USER = System.env.JOB_NAME
+            def JENKINS_BUILD_NUMBER = System.env.BUILD_NUMBER
+            def artifactoryTimestamp = System.env.ARTIFACTORY_TIMESTAMP
+            if (System.env.JOB_NAME == null) {
+                java.net.InetAddress localMachine = java.net.InetAddress.getLocalHost();
+                JOB_NAME = 'local computer ' + localMachine.getHostName().trim()
+                GIT_COMMIT = "git log -1 --format=%H".execute().getText().trim()
+                BUILD_USER = System.getProperty("user.name").trim()
+                JENKINS_BUILD_NUMBER = 'nonjenkins'
+            }
+
+            return [
+                    // Override name properties
+                    name: subproject.baseName,
+                    version: subproject.rootProject.ext.version,
+
+                    operatingSystem: "${System.properties['os.name']} (${System.properties['os.version']})",
+                    continuousIntegration: System.getenv('CI') ? true: false,
+                    machine: InetAddress.localHost.hostName,
+                    // Override buildInfo property time
+                    time: new java.util.Date(System.currentTimeMillis()).format('EEE MMM dd HH:mm:ss z yyyy'),
+                    jobName: JOB_NAME,
+                    gitCommit: GIT_COMMIT,
+                    buildUser: BUILD_USER,
+                    jenkinsBuildNumber: JENKINS_BUILD_NUMBER,
+                    artifactoryTimestamp: (artifactoryTimestamp == null ? 'none' : artifactoryTimestamp)
+            ]
+        }
+
+        generateBootRunCmdProps = { subproject, localmachineUsername ->
+            def commandProps = ""
+            // from environments.config springProfiles
+            if((!project.getConfigProp('spring.springProfiles').isEmpty()) && (project.getConfigProp('spring.springProfiles') != "")) {
+                commandProps += " --spring.profiles.active=" + project.getConfigProp('spring.springProfiles')
+            }
+
+            // read environmentsLocal.config
+            def configFile = file('environmentsLocal.config')
+            def slurper = new ConfigSlurper('localmachine_'+localmachineUsername)
+            slurper.setBinding([project: project])
+            def localmachine = [:]
+            try {
+                localmachine = slurper.parse(configFile.toURL())
+                if(localmachine.isEmpty()) {
+                    //println 'defaulting to "localmachine_default" from environments.config'
+                    slurper.setEnvironment('localmachine_default')
+                    localmachine = slurper.parse(configFile.toURL())
+                    if(localmachine.isEmpty()) {
+                        return commandProps
+                    }
+                }
+            } catch(java.io.IOException ex) {
+                return commandProps
+            }
+            project.ext.set('localmachine', localmachine)
+            localmachine.bootrunParams.each { kv ->
+                commandProps += " --" + kv.name + "=" + (kv.value == "" ? '""' : kv.value)
+            }
+            return commandProps
+        }
+    }
+}

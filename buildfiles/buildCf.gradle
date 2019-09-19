@@ -1,0 +1,290 @@
+// build helpers for dealing with cloudfoundry
+// using information from environments.config as read by buildEnv.gradle
+//
+// in master build.gradle: apply from: 'buildEnv.gradle'
+// in master build.gradle: apply from: 'buildCf.gradle'
+
+cloudfoundry {
+    application = project.ext.baseName
+    uri =         project.ext.baseName+project.getConfigProp('cloudfoundry.baseURL')
+    target =      "https://api."+project.getConfigProp('cloudfoundry.baseURL')
+    organization = project.getConfigProp('cloudfoundry.organization')
+    space =        project.getConfigProp('cloudfoundry.space')
+    trustSelfSignedCerts = project.getConfigProp('cloudfoundry.trustSelfSignedCerts')
+
+    username = project.getConfigProp('cloudfoundry.username')
+    password = project.getConfigProp('cloudfoundry.password')
+
+    file = file("${jar.archivePath}")
+    instances = project.getConfigProp('application.instances')
+    memory = project.getConfigProp('application.memory')
+    diskQuota = project.getConfigProp('application.diskQuota')
+    //buildpack = "java_springInsight_offline"
+    //buildpack = "java_buildpack_offline"
+
+    def jarFile = new File("${project.buildDir}/libs/${project.baseName}-${project.version}.jar")
+    env = [
+        "VERSION": project.version,
+        "BUILD_TIME": new java.util.Date(jarFile.lastModified()).format('EEE MMM dd HH:mm:ss z yyyy'),
+        "PUSHED_BY_USER" : System.getProperty('user.name', 'unknown'),
+        "SPRING_PROFILES_ACTIVE" : String.join(",", project.getConfigProp('spring.springProfiles')) // from environments.config
+    ]
+
+    //    services {
+    //        // defined in environments.config
+    //    }
+
+}
+
+task generateCfManifest(group:project.rootProject.ext.group, description:"generate a cloudfoundry manifest according the the chosen env of environments.config (-Penv=<env>)") {
+    doLast {
+        //def (hostname, _) = project.cloudfoundry.uri.tokenize('.')
+        //def domain = project.cloudfoundry.uri.substring(hostname.length() + 1)
+        def appNamePrefixEnv = project.hasProperty("appNamePrefixEnv") ? Boolean.valueOf("${appNamePrefixEnv}") : false
+        def appNamePrefix = project.hasProperty("appNamePrefix") ? "${appNamePrefix}" : ""
+        def appNamePostfix = project.hasProperty("appNamePostfix") ? "${appNamePostfix}" : ""
+        def prefixEnv = (appNamePrefixEnv ? (project.hasProperty('env') ? "-${env}" : '-dev') : '')
+        def appName = appNamePrefix + "${cloudfoundry.application}" + prefixEnv + appNamePostfix
+        def jarDir = project.hasProperty("jarDir") ? "${jarDir}" : ""
+        def targetOS = project.hasProperty("targetOS") ? "${targetOS}" : "unix"
+        def manifestOutputDir = project.hasProperty("manifestOutputDir") ? "${manifestOutputDir}" : "${buildDir}/libs"
+
+        println "\n gradle generateCfManifest -Penv=" + (project.hasProperty('env') ? env : 'dev') + " -PappNamePrefixEnv=" + appNamePrefixEnv + " -PappNamePrefix=" + appNamePrefix + " -PappNamePostfix=" + appNamePostfix + " -PspringProfilesActive=" + String.join(",", project.ext.springProfilesActive) + " -PjarDir=" + jarDir + " -PtargetOS=" + targetOS + " -PmanifestOutputDir=" + manifestOutputDir
+
+        def sep = (targetOS == "win" ? '\\' : '/')
+        if(jarDir.length() > 0) {
+            if(targetOS == "unix") {
+                jarDir = jarDir.replace('\\', '/')
+                jarDir = (!jarDir.endsWith("/")) ? "${jarDir}/" : jarDir
+            } else if(targetOS == "win") {
+                jarDir = jarDir.replace('/', '\\')
+                jarDir = (!jarDir.endsWith("\\")) ? "${jarDir}\\" : jarDir
+            }
+        }
+
+        def lineBreak = "\n"
+        def serviceConcat = "  services: "
+        if(project.getConfigProp('services.bindings').size() > 0) {
+            project.getConfigProp('services.bindings').each { service ->
+                def s = project.getConfigProp('services.serviceMap')[service]
+                serviceConcat += "\n    - ${s.name}"
+            }
+        } else {
+            serviceConcat = ""
+            lineBreak = ""
+        }
+        def envConcat = "${lineBreak}  env: "
+        if(project.cloudfoundry.env.size() > 0) {
+            project.cloudfoundry.env.each { k, v ->
+                if ( v.size() > 0) {
+                    envConcat += "\n    ${k}: ${v}"
+                }
+            }
+        } else {
+            envConcat = ""
+        }
+        // be sure that env: ${envConcat} ist last in manifestfile, so others (as CI/CD Jenkins) can add their env entries before pushing
+        def manifest = """applications:
+- name: ${project.cloudfoundry.application}
+  host: ${appName}
+  memory: ${project.cloudfoundry.memory}M
+  instances: ${project.cloudfoundry.instances}
+  disk_quota: ${project.cloudfoundry.diskQuota}M
+"""
+        if(!jarDir.toLowerCase().startsWith("none")) {
+            manifest += "  path: ${jarDir}${project.ext.baseName}-${project.jar.version}.jar\n"
+        }
+        manifest += serviceConcat
+        manifest += envConcat
+
+        file("${manifestOutputDir}").mkdirs()
+        def filebasename = (project.hasProperty('env') ? "${env}-" : 'dev-') +  appName
+        def manifestFilename = "manifest-" + filebasename + ".yml"
+        def outputFile = file("${manifestOutputDir}/${manifestFilename}")
+        def manifestOutputDirPrint = manifestOutputDir.replace("${buildDir}/", "build/")
+        outputFile.text = manifest
+        println "========= written to ${project.name}/${manifestOutputDirPrint}/${manifestFilename} ========="
+        println outputFile.text
+        println "======================================================"
+
+        outputFile = file("${manifestOutputDir}/deploy-${filebasename}.bat")
+        outputFile.text = """cf push -f ${manifestFilename}
+"""
+    }
+}
+
+task showCfTargetAndLogin(group:project.rootProject.ext.group, description:"print the cf-cli commands needed to login to the chosen env of environments.config (with -Penv=<env>)") {
+    doLast {
+        if(project.hasProperty("cloudfoundry")) {
+            // build.gradle has: "apply plugin: 'cloudfoundry'" and therefore a "cloundfoundry" section
+            // following defined in buildEnv.gradle
+            def callWithCreateServices = project.hasProperty("withCreateServices") ? Boolean.valueOf("${withCreateServices}") : false
+            def callWithBindings = project.hasProperty("withBindings") ? Boolean.valueOf("${withBindings}") : true
+            def callMaskPasswords = project.hasProperty("maskPasswords") ? Boolean.valueOf("${maskPasswords}") : true
+            def appNamePrefix = project.hasProperty("appNamePrefix") ? "${appNamePrefix}" : ""
+            def appNamePostfix = project.hasProperty("appNamePostfix") ? "${appNamePostfix}" : ""
+            println ""
+            print "========= Cloud foundry CLI deploy commands - START ========= for ${project.name}"
+            println createCfTargetAndLogin(cloudfoundry, callMaskPasswords)
+            println "========= Cloud foundry CLI deploy commands - END ==========="
+        }
+    }
+}
+
+task showCfCmds(group:project.rootProject.ext.group, description:"print the cf-cli commands needed to deploy and bind the app according the the env of environments.config (with -Penv=<env>)") {
+    doLast {
+        // e.g. gradle showCfCmds -Penv=throwback -PmaskPasswords=false -PwithCreateServices=true -PwithBindings=true
+        if(project.hasProperty("cloudfoundry")) { // build.gradle has: "apply plugin: 'cloudfoundry'" and therefore a "cloundfoundry" section
+            // following defined in buildEnv.gradle
+            def callWithCreateServices = project.hasProperty("withCreateServices") ? Boolean.valueOf("${withCreateServices}") : false
+            def callWithBindings = project.hasProperty("withBindings") ? Boolean.valueOf("${withBindings}") : true
+            def callMaskPasswords = project.hasProperty("maskPasswords") ? Boolean.valueOf("${maskPasswords}") : true
+            def appNamePrefixEnv = project.hasProperty("appNamePrefixEnv") ? Boolean.valueOf("${appNamePrefixEnv}") : false
+            def appNamePrefix = project.hasProperty("appNamePrefix") ? "${appNamePrefix}" : ""
+            def appNamePostfix = project.hasProperty("appNamePostfix") ? "${appNamePostfix}" : ""
+            def jarDir = project.hasProperty("jarDir") ? "${jarDir}" : "build/libs"
+            def targetOS = project.hasProperty("targetOS") ? "${targetOS}" : "unix"
+
+            println "\n gradle showCfCmds -Penv=" + (project.hasProperty('env') ? env : 'dev') + " -PwithCreateServices=" + callWithCreateServices + " -PwithBindings=" + callWithBindings + " -PmaskPasswords=" + callMaskPasswords + " -PappNamePrefixEnv=" + appNamePrefixEnv + " -PappNamePrefix=" + appNamePrefix + " -PappNamePostfix=" + appNamePostfix + " -PspringProfilesActive=" + String.join(",", project.ext.springProfilesActive) + " -PjarDir=" + jarDir + " -PtargetOS=" + targetOS
+            println ""
+            print "========= Cloud foundry CLI deploy commands - START ========= for ${project.name}"
+            println createCfTargetAndLogin(cloudfoundry, callMaskPasswords)
+            println createCfDeployCmds(cloudfoundry, callWithCreateServices, callWithBindings, callMaskPasswords, appNamePrefixEnv, appNamePrefix, appNamePostfix, project.ext.springProfilesActive, jarDir, targetOS, project)
+            println "========= Cloud foundry CLI deploy commands - END ==========="
+        }
+    }
+}
+
+task generateCfCmds(group:project.rootProject.ext.group, description:"generate the cf-cli login and deploy commands to scripts to <root>/generated Folder according to chosen env (with -Penv=<env>)") {
+    doLast {
+        // e.g. gradle showCfCmds -Penv=throwback -PmaskPasswords=false -PwithCreateServices=true -PwithBindings=true
+        if(project.hasProperty("cloudfoundry")) { // build.gradle has: "apply plugin: 'cloudfoundry'" and therefore a "cloundfoundry" section
+            // following defined in buildEnv.gradle
+            def callMaskPasswords = project.hasProperty("maskPasswords") ? Boolean.valueOf("${maskPasswords}") : true
+            def callWithTargetAndLogin = project.hasProperty("withTargetAndLogin") ? Boolean.valueOf("${withTargetAndLogin}") : true
+            def callWithCreateServices = project.hasProperty("withCreateServices") ? Boolean.valueOf("${withCreateServices}") : false
+            def callWithBindings = project.hasProperty("withBindings") ? Boolean.valueOf("${withBindings}") : true
+            def appNamePrefixEnv = project.hasProperty("appNamePrefixEnv") ? Boolean.valueOf("${appNamePrefixEnv}") : false
+            def appNamePrefix = project.hasProperty("appNamePrefix") ? "${appNamePrefix}" : ""
+            def appNamePostfix = project.hasProperty("appNamePostfix") ? "${appNamePostfix}" : ""
+            def jarDir = project.hasProperty("jarDir") ? "${jarDir}" : "build/libs"
+            def targetOS = project.hasProperty("targetOS") ? "${targetOS}" : "unix"
+
+            println "\n gradle generateCfCmds -Penv=" + (project.hasProperty('env') ? env : 'dev') + " -PwithTargetAndLogin=" + callWithTargetAndLogin + " -PwithCreateServices=" + callWithCreateServices + " -PwithBindings=" + callWithBindings + " -PmaskPasswords=" + callMaskPasswords + " -PappNamePrefixEnv=" + appNamePrefixEnv + " -PappNamePrefix=" + appNamePrefix + " -PappNamePostfix=" + appNamePostfix + " -PspringProfilesActive=" + String.join(",", springProfilesActive) + " -PjarDir=" + jarDir + " -PtargetOS=" + targetOS
+            println ""
+
+            def deployScriptsPath = "${projectDir}/generated"
+            def deployScriptsDir = new File(deployScriptsPath)
+            if ( deployScriptsDir.exists() ) {
+                delete fileTree(deployScriptsPath) { include '**/deploy-*' }
+            } else {
+                deployScriptsDir.mkdir()
+            }
+
+            def appName = appNamePrefix + "${cloudfoundry.application}" + appNamePostfix
+            def cfTargetAndLogin = createCfTargetAndLogin(cloudfoundry, callMaskPasswords)
+
+            println "generating ${deployScriptsPath}/deploy-${appName}.bat"
+            def fileAllInOneWin = file("${deployScriptsPath}/deploy-${appName}.bat")
+            fileAllInOneWin.write "@echo on\r\necho \"Starting deployment of ${appName}\"\r\n"
+            if ( callWithTargetAndLogin ) {
+                fileAllInOneWin.append cfTargetAndLogin
+                fileAllInOneWin.append "\r\n"
+            }
+            fileAllInOneWin.append createCfDeployCmds(cloudfoundry, callWithCreateServices, callWithBindings, callMaskPasswords, appNamePrefixEnv, "${appNamePrefix}", "${appNamePostfix}", project.ext.springProfilesActive, jarDir, "win", project)
+            fileAllInOneWin.append "\r\n\r\necho \"Press key to close window\"\r\npause\r\n"
+
+            println "generating ${deployScriptsPath}/deploy-${appName}.sh"
+            def fileAllInOneUnix = file("${deployScriptsPath}/deploy-${appName}.sh")
+            fileAllInOneUnix.write "#!/bin/bash\n\necho \"Starting deployment of ${appName}\"\n"
+            if ( callWithTargetAndLogin ) {
+                fileAllInOneUnix.append cfTargetAndLogin
+                fileAllInOneUnix.append "\n"
+            }
+            fileAllInOneUnix.append createCfDeployCmds(cloudfoundry, callWithCreateServices, callWithBindings, callMaskPasswords, appNamePrefixEnv, "${appNamePrefix}", "${appNamePostfix}", project.ext.springProfilesActive, jarDir, "unix", project)
+        }
+    }
+}
+
+configure(project) {
+    ext {
+        createCfTargetAndLogin = { cloudfoundry, callMaskPasswords ->
+            def skipSslValidation = cloudfoundry.trustSelfSignedCerts ? "--skip-ssl-validation" : ""
+            def cloudfoundryPassword = "<password>"
+            if(!callMaskPasswords) {
+                cloudfoundryPassword = cloudfoundry.password
+            }
+            def commands = ""
+            commands += "\r\ncf login -a ${cloudfoundry.target} -u ${cloudfoundry.username} -p \"${cloudfoundryPassword}\" -o \"${cloudfoundry.organization}\" -s \"${cloudfoundry.space}\" ${skipSslValidation}"
+            return commands
+        }
+
+        createCfDeployCmds = { cloudfoundry, callWithCreateServices, callWithBindings, callMaskPasswords, appNamePrefixEnv, appNamePrefix, appNamePostfix, theSpringProfilesActive, jarDir, targetOS, subproject ->
+            def commands = ""
+            def prefixEnv = (appNamePrefixEnv ? (project.hasProperty('env') ? "-${env}" : '-dev') : '')
+            def appName = appNamePrefix + "${cloudfoundry.application}" + prefixEnv + appNamePostfix
+
+            // cf create-services
+            if((project.getConfigProp('services.bindings').size() > 0) && callWithCreateServices) {
+                project.getConfigProp('services.bindings').each { service ->
+                    def s = project.getConfigProp('services.serviceMap')[service]
+                    if (s.plan == "user-provided") {
+                        commands += "\r\ncf create-user-provided-service ${s.name} -p '${s.credentials}'"
+                    } else if (s.plan?.trim()) {
+                        commands += "\r\ncf create-service ${s.service} \"${s.plan}\" ${s.name}"
+                    }
+                }
+            }
+
+            def sep = (targetOS == "win" ? '\\' : '/')
+            if(jarDir.length() > 0) {
+                if(targetOS == "unix") {
+                    jarDir = jarDir.replace('\\', '/')
+                    jarDir = (jarDir.endsWith("/")) ? jarDir.substring(0, jarDir.length() - 1) : jarDir
+                } else if(targetOS == "win") {
+                    jarDir = jarDir.replace('/', '\\')
+                    jarDir = (jarDir.endsWith("\\")) ? jarDir.substring(0, jarDir.length() - 1) : jarDir
+                }
+            } else {
+                jarDir = '.'
+            }
+
+            // cf bind-services
+            if((project.getConfigProp('services.bindings').size() > 0) && callWithBindings) {
+                commands += "\r\ncf push ${appName} -k ${cloudfoundry.diskQuota}M -m ${cloudfoundry.memory}M -i ${cloudfoundry.instances} -p ${jarDir}${sep}${subproject.jar.baseName}-${subproject.jar.version}.jar --no-start"
+                project.getConfigProp('services.bindings').each { service ->
+                    def s = project.getConfigProp('services.serviceMap')[service]
+                    commands += "\r\ncf bind-service ${appName} ${s.name}"
+                }
+            } else {
+                if((project.getConfigProp('services.bindings').size() > 0) || (cloudfoundry.env.size() > 0)) {
+                    commands += "\r\ncf push ${appName} -k ${cloudfoundry.diskQuota}M -m ${cloudfoundry.memory}M -i ${cloudfoundry.instances} -p ${jarDir}${sep}${subproject.jar.baseName}-${subproject.jar.version}.jar --no-start"
+                } else {
+                    commands += "\r\ncf push ${appName} -k ${cloudfoundry.diskQuota}M -m ${cloudfoundry.memory}M -i ${cloudfoundry.instances} -p ${jarDir}${sep}${subproject.jar.baseName}-${subproject.jar.version}.jar"
+                }
+            }
+
+            // cf set-envs
+            if(cloudfoundry.env.size() > 0) {
+                cloudfoundry.env.each{ kv ->
+                    if (kv.key == "SPRING_PROFILES_ACTIVE") {
+                        if ((theSpringProfilesActive.size() > 0) && (!(theSpringProfilesActive.size() == 1) && "default" == theSpringProfilesActive.get(0))) {
+                        commands += "\r\ncf set-env ${appName} SPRING_PROFILES_ACTIVE \"${String.join(",", theSpringProfilesActive)}\""
+                        }
+                    } else {
+                        commands += "\r\ncf set-env ${appName} ${kv.key} \"${kv.value}\""
+                    }
+                }
+            }
+
+            if((project.getConfigProp('services.bindings').size() > 0) || (cloudfoundry.env.size() > 0)) {
+                commands += "\r\ncf restart ${appName}"
+            }
+
+            commands += "\r\ncf create-app-manifest ${appName} -p manifest-" + (project.hasProperty('env') ? env : 'dev') + ".yml"
+            commands += "\r\necho '  path: ${jarDir}${sep}${subproject.jar.baseName}-${subproject.jar.version}.jar' >> manifest-" + (project.hasProperty('env') ? env : 'dev') + ".yml"
+
+            return commands
+        }
+    }
+}

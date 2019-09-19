@@ -1,0 +1,242 @@
+jobs:
+  - name: buildMinimalSpringCloudServices
+    serial: true
+    plan:
+    - get: git-source-code
+      trigger: false
+
+    - task: gradleBuild
+      file: git-source-code/ci/gradle-build.yml # task to build this app (output: producerBuild)
+
+    - put: cf-push-circuitbreakers_sink
+      resource: cf-cli
+      params:
+        command: push
+        app_name: ((sinkAppName))
+        memory: 1G
+        disk_quota: 256M
+        instances: 1
+        buildpack: ((javaBuildpack))
+        path: buildFiles/libs/minimal_circuitbreakers-((buildExtVersion)).((buildExtStatus)).jar
+        manifest: git-source-code/circuitbreakers/cf/manifest_circuitbreakers_sink_((env)).yml
+        no_start: true
+    - put: cf-push-circuitbreakers_tier2
+      resource: cf-cli
+      params:
+        command: push
+        app_name: ((tier2AppName))
+        memory: 1G
+        disk_quota: 256M
+        instances: 1
+        buildpack: ((javaBuildpack))
+        path: buildFiles/libs/minimal_circuitbreakers-((buildExtVersion)).((buildExtStatus)).jar
+        manifest: git-source-code/circuitbreakers/cf/manifest_circuitbreakers_tier2_((env)).yml
+        no_start: true
+    - put: cf-push-circuitbreakers_tier1
+      resource: cf-cli
+      params:
+        command: push
+        app_name: ((tier1AppName))
+        memory: 1G
+        disk_quota: 256M
+        instances: 1
+        buildpack: ((javaBuildpack))
+        path: buildFiles/libs/minimal_circuitbreakers-((buildExtVersion)).((buildExtStatus)).jar
+        manifest: git-source-code/circuitbreakers/cf/manifest_circuitbreakers_tier1_((env)).yml
+        no_start: true
+    - put: cf-push-circuitbreakers_source
+      resource: cf-cli
+      params:
+        command: push
+        app_name: ((sourceAppName))
+        memory: 1G
+        disk_quota: 256M
+        instances: 1
+        buildpack: ((javaBuildpack))
+        path: buildFiles/libs/minimal_circuitbreakers-((buildExtVersion)).((buildExtStatus)).jar
+        manifest: git-source-code/circuitbreakers/cf/manifest_circuitbreakers_source_((env)).yml
+        no_start: true
+
+
+    - put: cf-create-service-circuitbreakers-rabbit
+      resource: cf-cli
+      params:
+        command: create-service
+        service: ((rabbitServiceName))
+        plan: ((rabbitServicePlan))
+        service_instance: ((rabbitInstanceName))
+        wait_for_service: false
+    - put: cf-create-service-circuitbreakers-registry
+      resource: cf-cli
+      params:
+        command: create-service
+        service: ((registryServiceName))
+        plan: ((registryServicePlan))
+        service_instance: ((registryInstanceName))
+        wait_for_service: false
+    - put: cf-create-service-circuitbreakers-circuitBreaker
+      resource: cf-cli
+      params:
+        command: create-service
+        service: ((circuitBreakerServiceName))
+        plan: ((circuitBreakerServicePlan))
+        service_instance: ((circuitBreakerInstanceName))
+        wait_for_service: false
+    - put: cf-create-service-circuitbreakers-configServer
+      resource: cf-cli
+      params:
+        command: create-service
+        service: ((configServerServiceName))
+        plan: ((configServerServicePlan))
+        service_instance: ((configServerInstanceName))
+        configuration: "{\"git\": { \"uri\": \"((configServerGitRepoUri))\", \"strictHostKeyChecking\": false, \"privateKey\": \"((configServerGitRepoKeyOneLiner))\"} }"
+        wait_for_service: true
+
+
+    - put: cf-bind-service-circuitbreakers_sink-rabbit
+      resource: cf-cli
+      params:
+        command: bind-service
+        app_name: ((sinkAppName))
+        service_instance: ((rabbitInstanceName))
+    - put: cf-bind-service-circuitbreakers_sink-registry
+      resource: cf-cli
+      params:
+        command: bind-service
+        app_name: ((sinkAppName))
+        service_instance: ((registryInstanceName))
+    - put: cf-bind-service-circuitbreakers_sink-circuitBreaker
+      resource: cf-cli
+      params:
+        command: bind-service
+        app_name: ((sinkAppName))
+        service_instance: ((circuitBreakerInstanceName))
+    - put: cf-bind-service-circuitbreakers_sink-configServer
+      resource: cf-cli
+      params:
+        command: bind-service
+        app_name: ((tier2AppName))
+        service_instance: ((configServerInstanceName))
+
+    - put: cf-bind-service-circuitbreakers_tier2-rabbit
+      resource: cf-cli
+      params:
+        command: bind-service
+        app_name: ((tier2AppName))
+        service_instance: ((rabbitInstanceName))
+    - put: cf-bind-service-circuitbreakers_tier2-registry
+      resource: cf-cli
+      params:
+        command: bind-service
+        app_name: ((tier2AppName))
+        service_instance: ((registryInstanceName))
+    - put: cf-bind-service-circuitbreakers_tier2-circuitBreaker
+      resource: cf-cli
+      params:
+        command: bind-service
+        app_name: ((tier2AppName))
+        service_instance: ((circuitBreakerInstanceName))
+    - put: cf-bind-service-circuitbreakers_tier2-configServer
+      resource: cf-cli
+      params:
+        command: bind-service
+        app_name: ((tier2AppName))
+        service_instance: ((configServerInstanceName))
+
+    - put: cf-bind-service-circuitbreakers_tier1-rabbit
+      resource: cf-cli
+      params:
+        command: bind-service
+        app_name: ((tier1AppName))
+        service_instance: ((rabbitInstanceName))
+    - put: cf-bind-service-circuitbreakers_tier1-registry
+      resource: cf-cli
+      params:
+        command: bind-service
+        app_name: ((tier1AppName))
+        service_instance: ((registryInstanceName))
+    - put: cf-bind-service-circuitbreakers_tier1-circuitBreaker
+      resource: cf-cli
+      params:
+        command: bind-service
+        app_name: ((tier1AppName))
+        service_instance: ((circuitBreakerInstanceName))
+    - put: cf-bind-service-circuitbreakers_tier1-configServer
+      resource: cf-cli
+      params:
+        command: bind-service
+        app_name: ((tier1AppName))
+        service_instance: ((configServerInstanceName))
+
+    - put: cf-bind-service-circuitbreakers_source-rabbit
+      resource: cf-cli
+      params:
+        command: bind-service
+        app_name: ((sourceAppName))
+        service_instance: ((rabbitInstanceName))
+    - put: cf-bind-service-circuitbreakers_source-registry
+      resource: cf-cli
+      params:
+        command: bind-service
+        app_name: ((sourceAppName))
+        service_instance: ((registryInstanceName))
+    - put: cf-bind-service-circuitbreakers_source-circuitBreaker
+      resource: cf-cli
+      params:
+        command: bind-service
+        app_name: ((sourceAppName))
+        service_instance: ((circuitBreakerInstanceName))
+    - put: cf-bind-service-circuitbreakers_source-configServer
+      resource: cf-cli
+      params:
+        command: bind-service
+        app_name: ((sourceAppName))
+        service_instance: ((configServerInstanceName))
+
+
+    - put: cf-start-circuitbreakers_sink
+      resource: cf-cli
+      params:
+        command: start
+        app_name: ((sinkAppName))
+    - put: cf-start-circuitbreakers_tier2
+      resource: cf-cli
+      params:
+        command: start
+        app_name: ((tier2AppName))
+    - put: cf-start-circuitbreakers_tier1
+      resource: cf-cli
+      params:
+        command: start
+        app_name: ((tier1AppName))
+    - put: cf-start-circuitbreakers_source
+      resource: cf-cli
+      params:
+        command: start
+        app_name: ((sourceAppName))
+
+
+resource_types:
+- name: cf-cli-resource
+  type: docker-image
+  source:
+    repository: nulldriver/cf-cli-resource
+    tag: latest
+
+resources:
+- name: cf-cli
+  type: cf-cli-resource
+  source:
+    api: ((cf-api-url))
+    username: ((cf-tu-username))
+    password: ((cf-tu-password))
+    org: ((cf-org))
+    space: ((cf-space))
+    skip_cert_check: true
+- name: git-source-code
+  type: git
+  source:
+    uri: ((git-repo))
+    branch: ((git-branch))
+    private_key: ((pipeline-repo-key.private_key))
+

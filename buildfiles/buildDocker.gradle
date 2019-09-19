@@ -1,0 +1,46 @@
+// apply from: project.rootProject.projectDir.toString() + '/buildfiles/buildSpringConfig.gradle'
+ext {
+    dockerRegistryUrl = 'https://index.docker.io/v1/'
+    dockerRegistryUser = 'dhoffi'
+    dockerTag = project.ext.dockerRegistryUser + (project.ext.dockerRegistryUser == "" ? "" : "/") + project.name +':' + project.ext.versionBase
+    dockerNetwork = 'mynetwork'
+}
+    
+docker {
+    springBootApplication {
+        baseImage = 'openjdk:8-alpine'
+        ports = ["${getSpringAppconfig('server.port')}"]
+        tag = project.ext.dockerTag
+        registryCredentials {
+            url = project.ext.dockerRegistryUrl
+            username = project.ext.dockerRegistryUser
+            password = System.env.DOCKERHUB_PASS
+        }
+    }
+}
+
+task checkDockerhubPass(group:project.group, description:"check if DOCKERHUB_PASS is set in environment") {
+    doLast {
+        if ((System.env.DOCKERHUB_PASS == null) || (System.env.DOCKERHUB_PASS == "")) {
+            throw new GradleException('for accessing hub.docker.com you need to set system env variable DOCKERHUB_PASS')
+        }
+    }
+}
+dockerPushImage.dependsOn(checkDockerhubPass)
+
+task printDockerRunCmds(group:project.group, description:"print docker run commands to console") {
+    doLast {
+        def dockerRunCmdsString = """
+docker network create ${project.ext.dockerNetwork}
+
+# RabbitMQ
+docker run -d -p 5672:5672 -p 15672:15672 --network ${project.ext.dockerNetwork} --hostname my-rabbit --name some-rabbit rabbitmq:3.7.8-management-alpine
+
+# ${project.name}
+docker run -d -p 8081:${getSpringAppconfig('server.port')}                --network ${project.ext.dockerNetwork}  --name ${project.name} ${project.ext.dockerTag}
+
+"""
+        println dockerRunCmdsString
+    }
+}
+

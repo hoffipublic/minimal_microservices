@@ -1,0 +1,226 @@
+import java.io.File
+
+task generateVscodeTaskConfigs(group:project.rootProject.group, description:"generate ./.vscode/tasks.json in rootProject folder") {
+    doLast {
+        def vscodeTaskConfig = generateVscodeTaskConfigs(project)
+        // println "${vscodeTaskConfig}"
+        def vscodeFileRef = getVscodeFileRef("tasks.json")
+        vscodeFileRef.text = vscodeTaskConfig
+    }
+}
+
+task generateVscodeLaunchConfigs(group:project.rootProject.group, description:"generate ./.vscode/launch.json in rootProject folder") {
+    doLast {
+        def vscodeLaunchConfig = generateVscodeLaunchConfigs(project)
+        // println "${vscodeTaskConfig}"
+        def vscodeFileRef = getVscodeFileRef("launch.json")
+        vscodeFileRef.text = project.rootProject.ext.vscodeLaunchsHeader
+        for (String launch : project.rootProject.ext.vscodeLaunchs) {
+            vscodeFileRef.text += launch
+        }
+        vscodeFileRef.text += project.rootProject.ext.vscodeLaunchsFooter
+    }
+}
+
+task generateVscodeAllConfigs(group:project.rootProject.group, description:"generate all ./.vscode/ files") {
+    dependsOn project.generateVscodeTaskConfigs
+    dependsOn project.generateVscodeLaunchConfigs
+}
+
+configure(rootProject) {
+    project.ext.set('springProfilesActive', System.env.SPRING_PROFILES_ACTIVE == null ? ["default"]: System.env.SPRING_PROFILES_ACTIVE.split(','))
+    rootProject.ext.set('vscodeLaunchs', new LinkedList<String>())
+    rootProject.ext.set('vscodeLaunchsHeader', """{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [""")
+    rootProject.ext.set("vscodeLaunchsFooter", """    ]
+}
+""")
+}
+configure(project) {
+    ext {
+        generateVscodeTaskConfigs = { subproject ->
+            gradlew = subproject.rootProject.projectDir.toString() + "/gradlew"
+            rootprojectDir = subproject.rootProject.projectDir.toString()
+            subprojectDir = subproject.projectDir.toString()
+            
+            def tasks = """{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "group": "build",
+            "label": "gradleBuildAll",
+            "type": "shell",
+            "command": "clear && ${gradlew} build -x test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "options": {
+                "cwd": "${rootprojectDir}"
+            }
+        },
+        {
+            "group": "build",
+            "label": "gradleCleanBuildAll",
+            "type": "shell",
+            "command": "clear && ${gradlew} clean build -x test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "options": {
+                "cwd": "${rootprojectDir}"
+            }
+        },
+        {
+            "group": "test",
+            "label": "gradleBuildTestAll",
+            "type": "shell",
+            "command": "clear && ${gradlew} build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "options": {
+                "cwd": "${rootprojectDir}"
+            }
+        },
+        {
+            "group": "test",
+            "label": "gradleCleanBuildTestAll",
+            "type": "shell",
+            "command": "clear && ${gradlew} clean build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "options": {
+                "cwd": "${rootprojectDir}"
+            }
+        },
+        {
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "label": "${subproject.name} gradleBuild",
+            "type": "shell",
+            "command": "clear && ${gradlew} build -x test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "options": {
+                "cwd": "${subprojectDir}"
+            }
+        },
+        {
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "label": "${subproject.name} gradleCleanBuild",
+            "type": "shell",
+            "command": "clear && ${gradlew} clean build -x test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "options": {
+                "cwd": "${subprojectDir}"
+            }
+        },
+        {
+            "group": "test",
+            "label": "${subproject.name} gradleBuildTest",
+            "type": "shell",
+            "command": "clear && ${gradlew} build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "options": {
+                "cwd": "${subprojectDir}"
+            }
+        },
+        {
+            "group": "test",
+            "label": "${subproject.name} gradleCleanBuildTest",
+            "type": "shell",
+            "command": "clear && ${gradlew} clean build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "options": {
+                "cwd": "${subprojectDir}"
+            }
+        },
+    ]
+}"""
+                return tasks
+        }
+        generateVscodeLaunchConfigs = { subproject ->
+            LinkedList<String> launchs = rootProject.ext.vscodeLaunchs
+            gradlew = subproject.rootProject.projectDir.toString() + "/gradlew"
+            rootprojectDir = subproject.rootProject.projectDir.toString()
+            subprojectDir = subproject.projectDir.toString()
+            
+            def springProfilesActive = subproject.rootProject.ext.springProfilesActive
+            
+            launchs.add("""
+        {
+            "type": "java",
+            "name": "${subproject.name}",
+            "request": "launch",
+            "cwd": "${subprojectDir}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "${subproject.springBoot.mainClassName}",
+            "projectName": "${subproject.name}",
+            "args": "",
+            "env": {
+                "SPRING_APPLICATION_NAME": "${getSpringAppconfig("spring.application.name")}"
+            },
+        },
+        {
+            "type": "java",
+            "name": "${subproject.name}-${springProfilesActive.join(',')}",
+            "request": "launch",
+            "cwd": "${subprojectDir}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "${subproject.springBoot.mainClassName}",
+            "projectName": "${subproject.name}",
+            "args": "",
+            "env": {
+                "SPRING_PROFILES_ACTIVE": "${springProfilesActive.join(',')}",
+                "SPRING_APPLICATION_NAME": "${getSpringAppconfig("spring.application.name")}"
+            },
+        },
+""")
+                return launchs.peekLast()
+        }
+        getVscodeWorkspaceDirName = {
+            def vscodeWorkspaceDirName = System.env.VSCODEDIR == null ? project.rootProject.projectDir.toString() : System.env.VSCODEDIR
+            File vscodeWorkspaceDirFile = new File(vscodeWorkspaceDirName, ".vscode")
+            vscodeWorkspaceDirFile.mkdirs()
+            return vscodeWorkspaceDirFile
+        }
+        getVscodeFileRef = { fileName ->
+            def vscodeWorkspaceDir = getVscodeWorkspaceDirName()
+            def fileRef = new File(vscodeWorkspaceDir, fileName)
+            if (fileRef.exists()) {
+                fileRef.renameTo(new File(vscodeWorkspaceDir, fileName + ".backup"));
+                fileRef = new File(vscodeWorkspaceDir, fileName)
+            }
+            return fileRef
+        }
+    }
+}

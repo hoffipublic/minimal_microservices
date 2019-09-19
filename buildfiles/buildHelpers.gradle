@@ -1,0 +1,35 @@
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
+
+configure(project.rootProject) {
+    ext {
+        // this is called from the envfilename Environment Definition File
+        getSecuritySensitiveProperty = { key, valueExample ->
+            if (System.env.JOB_NAME != null) {
+                println("Building on build-server, if needed, ${key} has to be provided by the build-server")
+                return "provided by jenkins"
+            } else if (!project.hasProperty(key)) {
+                def pathToGradleProp = System.getProperty("user.home") + "/.gradle/gradle.properties"
+                System.err.println("\n\n=======================================================================================")
+                System.err.println("If building locally, please add the following security sensitive property to your local '${pathToGradleProp}' by adding the following line:\n\n\t${key}=${valueExample}\n")
+                System.err.println("===========================================================================================\n")
+                // System.exit(1);
+                "<missing-${key}-In~/.gradle/gradle.properties>"
+            } else {
+                project.ext.get(key)
+            }
+        }
+
+        // misc helper functions
+        utctimepostfix = OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.SECONDS).toString().replace(":", "")
+
+        lastThreeDirsOf = { dir ->
+            def matcher = dir =~ /\/?(([^\/]+)?\/?([^\/]+)?\/?([^\/]+)?\/)(?:[^\/]+)$/
+            def lastThreeDirs = " (.../"
+            try { lastThreeDirs += matcher[0][1] + ")" } catch(all) {}
+            return lastThreeDirs
+        }
+
+    }
+}

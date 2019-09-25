@@ -24,7 +24,7 @@
 //     }
 
 //     @Autowired(required = false)
-//     private Tracer tracer;
+//     private Tracer opentracingTracer;
 
 //     public void tagCurrentSpan(TAGKEY tag, String tagstring) {
 //         // Span Tags for

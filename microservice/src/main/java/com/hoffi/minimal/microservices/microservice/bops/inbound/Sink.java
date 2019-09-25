@@ -1,10 +1,13 @@
 package com.hoffi.minimal.microservices.microservice.bops.inbound;
 
 import com.hoffi.minimal.microservices.microservice.bops.channels.SinkChannels;
+import com.hoffi.minimal.microservices.microservice.common.dto.BOP;
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
-import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.MDCLocal;
+import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.ScopedBOP;
+import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.TracingHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.stream.annotation.StreamListener;
 import org.springframework.context.annotation.Profile;
@@ -19,27 +22,25 @@ public class Sink {
     @Value("${app.info.instance_index}")
     private String instanceIndex;
 
-    // @Autowired
-    // private CustomBaggage customBaggage;
-
+    @Autowired
+    private TracingHelper tracingHelper;
+    
     @StreamListener(SinkChannels.INPUT)
-    //@NewSpan("SinkStreamListener")
     public void sinked(MessageDTO payload, Message<MessageDTO> wholeMessage) {
-        String newChunk = new Object() {}.getClass().getEnclosingMethod().getName();
-        MDCLocal.startChunk(newChunk);
-        try {
-            //        log.info("[{}]Received: '{}' wholeMessage '{}'", instanceIndex, payload, wholeMessage);
-            log.info("[{}]Received: '{}'", instanceIndex, wholeMessage);
-            // we now are the final step for this business process,
-            // so we also tag with a special tag indicating exactly this
-            // if you want this change to be propagated to zipkin, you have to start a new tagged span
-            // otherwise the new Baggage will only be logged
-            // and submitted downstream of course
-           // customBaggage.dynBaggageTagSuccessorProcess("FINAL");
+        String opName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
+        BOP opBOP = tracingHelper.continueTraceFromUpstream(opName, instanceIndex);
+
+        log.info("continue Trace from upstream: {}", opBOP);
+
+        // explicit call just to show how to alter the current chunkName
+        String chunkName = "receive";
+        try(ScopedBOP scopedBOP = tracingHelper.startUnscopedChunk(opBOP, chunkName, true)) {
             log.info("[{}] FINAL for: '{}'", instanceIndex, payload);
-        } finally {
-            MDCLocal.endChunk(newChunk);
+        } catch (Throwable t) {
+            log.error("Exception on message transform: {}", t);
+            tracingHelper.tracer().activeSpan().log(t.getMessage()); // Report any errors properly.
         }
+        log.info("completely finished trace");
     }
 
 }

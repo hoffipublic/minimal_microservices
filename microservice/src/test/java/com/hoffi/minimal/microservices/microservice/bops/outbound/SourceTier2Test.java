@@ -10,6 +10,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.hoffi.minimal.microservices.microservice.bops.channels.Tier2Channels;
 import com.hoffi.minimal.microservices.microservice.common.dto.BOP;
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
+import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.ScopedChunk;
+import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.TracingHelper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,17 +22,19 @@ import org.springframework.boot.test.autoconfigure.json.AutoConfigureJson;
 import org.springframework.boot.test.autoconfigure.json.AutoConfigureJsonTesters;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.json.JacksonTester;
+import org.springframework.cloud.stream.test.binder.MessageCollector;
 import org.springframework.integration.channel.AbstractMessageChannel;
+import org.springframework.integration.support.MessageBuilder;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.support.ChannelInterceptor;
-import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import annotations.AppTest;
 import annotations.MessagingTest;
 import annotations.TrivialTest;
+import io.opentracing.Span;
 import testhelpers.DTOhelpers;
 
 @ActiveProfiles("tier2")
@@ -47,6 +51,9 @@ import testhelpers.DTOhelpers;
 @AutoConfigureJsonTesters
 @SpringBootTest
 class SourceTier2Test extends DTOhelpers {
+    // import static org.assertj.core.api.Assertions.assertThat;
+    // import static org.junit.jupiter.api.Assertions.assertEquals;
+    // import static org.junit.jupiter.api.Assertions.fail;
 
     @Value("${app.businessLogic.tier}")
     private String tier;
@@ -70,12 +77,54 @@ class SourceTier2Test extends DTOhelpers {
     @Autowired
     Tier2Channels tier2Channels;
 
+    @Autowired
+    private MessageCollector messageCollector;
+
+    @Autowired
+    TracingHelper tracingHelper;
+
     @TrivialTest
     @Disabled("Not yet implemented")
     void failTests() {
         fail("Not yet implemented");
     }
 
+    @AppTest
+    @MessagingTest
+    void minimalSendTest() {
+        // construct test MessageDTO to be send
+        String testOpName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
+        testOpName = SourceTier1.class.getSimpleName() + "." + testOpName;
+
+        BOP opBOP = BOP.initInitially("testDomain", "testProcess", testOpName, "42", "5");
+        // Start a new Trace for BOP
+        Span bopSpan = tracingHelper.tracer().buildSpan(testOpName).start();
+        try (ScopedChunk scopedChunkBusinessLogic = tracingHelper.startScopedChunk(bopSpan, opBOP, "timerSend", true)) {
+            BOP scopeBOP = scopedChunkBusinessLogic.bop();
+            MessageDTO messageDTO = MessageDTO.create(scopeBOP, "testMessage", "initial Modification");
+            messageDTO.seq = 42;
+
+            Message<MessageDTO> messageToSend = MessageBuilder.withPayload(messageDTO)
+            // .setHeader("X-B3-TraceId", "testTrace").setHeader("X-B3-SpanId", "testSpan")
+            .build();
+
+            tier2Channels.tier2Input().send(messageToSend);
+        } catch (Throwable t) {
+            bopSpan.log(t.getMessage()); // Report any errors properly.
+        }
+        
+        @SuppressWarnings("unchecked")
+        Message<MessageDTO> receivedMessage =
+                (Message<MessageDTO>) messageCollector.forChannel(tier2Channels.tier2Output()).poll();
+
+        // // extract receivedDTO from message and do assertions
+        // String payload = (String) receivedMessage.getPayload();
+        // MessageDTO receivedDTO = json.parse(payload).getObject();
+        MessageDTO receivedDTO = receivedMessage.getPayload();
+
+        assertEquals("testMessage", receivedDTO.message);
+    }
+    
     @AppTest
     @MessagingTest
     void functionalSendTest() throws IOException, InterruptedException {
@@ -103,11 +152,12 @@ class SourceTier2Test extends DTOhelpers {
         tier2Output.addInterceptor(assertionInterceptor);
 
         // construct test MessageDTO to be send
-        BOP modulebop = BOP.initModule("testms", "1", "testmodule");
-        BOP bop = modulebop.createBOP("fromSource");
-        MessageDTO messageDTO = MessageDTO.create(bop);
+        String testOpName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
+        testOpName = SourceTier1.class.getSimpleName() + "." + testOpName;
+
+        BOP opBOP = BOP.initInitially("testDomain", "testProcess", testOpName, "42", "5");
+        MessageDTO messageDTO = MessageDTO.create(opBOP, "testMessage", "initial Modification");
         messageDTO.seq = 42;
-        messageDTO.message = "fromSource";
 
         // start Trace and  and send messageDTO
         //customBaggage.startTrace("testBP", 42, "nextMS");

@@ -17,11 +17,12 @@ dependencies {
     implementation "org.springframework.boot:spring-boot-starter-web"
     implementation "org.springframework.cloud:spring-cloud-starter"
 
+    implementation "io.opentracing.brave:brave-opentracing"
+    implementation "io.zipkin.brave:brave-instrumentation-spring-rabbit"
     // Caution: spring-cloud-sleuth-stream is deprecated and incompatible with these destinations.
     // implementation 'org.springframework.cloud:spring-cloud-starter-sleuth' // if using without zipkin
     implementation 'org.springframework.cloud:spring-cloud-starter-zipkin'
     implementation 'org.springframework.cloud:spring-cloud-sleuth-zipkin'
-    implementation 'io.opentracing.brave:brave-opentracing'
     // // jaeger might be a replacement for sleuth and zipkin (obove) as soon as they support traceContext within slf4j MDC
     // implementation "io.jaegertracing:jaeger-client:${v('jaegerClientVersion')}"
     // implementation "io.opentracing.contrib:opentracing-spring-jaeger-cloud-starter:${v('springJaegerCloud')}"

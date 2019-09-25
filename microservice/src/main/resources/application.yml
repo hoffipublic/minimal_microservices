@@ -5,8 +5,10 @@ logging:
     #org.springframework.cloud.sleuth: DEBUG
     brave: DEBUG
   pattern:
-      # from org.springframework.cloud.sleuth.autoconfig.TraceEnvironmentPostProcessor
-    level: "%5p [${spring.zipkin.service.name:${spring.application.name:-}},%X{X-B3-TraceId:-},%X{X-B3-SpanId:-},%X{X-Span-Export:-}] [%X{bpn:-},%X{bpid:-},%X{succ:-}] [%X{chunk:-}]"
+    # MDC values have to be EXACTLY like in spring.sleuth.xxx-keys and whitelisted-mdc-keys
+    # original from org.springframework.cloud.sleuth.autoconfig.TraceEnvironmentPostProcessor
+  # level: "%5p [${spring.zipkin.service.name:${spring.application.name:-}},%X{X-B3-TraceId:-},%X{X-B3-SpanId:-},%X{X-Span-Export:-}]"
+    level: "%5p [${spring.zipkin.service.name:${spring.application.name:-}},%X{X-B3-TraceId:-},%X{X-B3-SpanId:-},%X{X-Span-Export:-}] [%X{ddd:-},%X{bp:-},%X{bpids:-}] [%X{op:-},%X{chunk:-},%X{i:-}]"
 
 spring:
   #main:
@@ -14,20 +16,33 @@ spring:
   jmx:
     enabled: false
   sleuth:
+    opentracing:
+      enabled: true
     sampler:
       probability: 1.0
     annotation:
       enabled: true
-    baggage-keys: # match CustomSlf4jCurrentTraceContext static Strings
-    - bpn
-    - bpid
-    - succ
+    baggage-keys: # keys that travel with inter-process calls (see MDCLocal.java)
+    - bpids
+    - ddd
+    - bp
+    local-keys: # keys that are only propagated within the app
+    - i
+    propagation-keys: # keys propagated to zipkin
+    - bpids
+    - ddd
+    - bp
+    - op
+    - chunk
     log:
       slf4j:
-        whitelisted-mdc-keys:
-        - bpn
-        - bpid
-        - succ
+        whitelisted-mdc-keys: # baggage-keys that are copied to slf4j MDC
+        - bpids
+        - ddd
+        - bp
+        - i
+        - op
+        - chunk
     rxjava:
       schedulers:
         ignoredthreads:
@@ -36,7 +51,7 @@ spring:
         - ^RxIoScheduler.*$
   zipkin:
     enabled: true
-    base-url: http://localhost:14268/api/traces # ${ZIPKIN_URL:http://localhost:9411}
+    base-url: ${ZIPKIN_URL:http://localhost:9411} # http://localhost:14268/api/traces #
     sender:
       type: web
 
@@ -83,7 +98,15 @@ eureka:
 my:
   test:
     property: "from application.yml"
-    
+
+---
+
+spring:
+  profiles: local
+logging:
+  pattern:
+    level: "%5p [${spring.zipkin.service.name:${spring.application.name:-}},%X{X-B3-TraceId:-},%X{X-B3-SpanId:-},%X{X-Span-Export:-}] [%X{ddd:-},%X{bp:-},%X{bpids:-}] [%X{op:-},%X{chunk:-},%X{i:-}]\n"
+
 ---
 
 spring:

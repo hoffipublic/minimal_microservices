@@ -1,11 +1,12 @@
 package com.hoffi.minimal.microservices.microservice.bops.outbound;
 
-import javax.annotation.PostConstruct;
 import com.hoffi.minimal.microservices.microservice.bops.channels.Tier2Channels;
 import com.hoffi.minimal.microservices.microservice.businesslogic.BusinessLogic;
 import com.hoffi.minimal.microservices.microservice.common.dto.BOP;
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
 import com.hoffi.minimal.microservices.microservice.helpers.AverageDurationHelper;
+import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.ScopedChunk;
+import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.TracingHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,9 +17,7 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
-import io.opentracing.Scope;
 import io.opentracing.Span;
-import io.opentracing.Tracer;
 
 @Profile({ "tier2" })
 @Component
@@ -35,14 +34,7 @@ public class SourceTier2 {
     private AverageDurationHelper averageHelper;
 
     @Autowired
-    private Tracer tracer;
-
-    private BOP BUSINESS_MODULE;
-
-    @PostConstruct
-    public void init() {
-        this.BUSINESS_MODULE = BOP.initModule(tier, instanceIndex, Source.class.getSimpleName());
-    }
+    private TracingHelper tracingHelper;
 
     // as both: injecting the Channel and only @SendTo annotation on the producer-method
     // let the send happen where the @HystrixCommand cannot catch and extract
@@ -77,18 +69,21 @@ public class SourceTier2 {
     // @formatter:on
     public void sourceTier2SendTo(MessageDTO payload) throws Exception {
         long startTime = System.currentTimeMillis();
-        String bopName = new Object() {}.getClass().getEnclosingMethod().getName();
-        BOP bop = BUSINESS_MODULE.createBOP(bopName);
-        //MDCLocal.startChunk(bopName);
-        Span bopSpan = tracer.buildSpan(bopName).start();
-        try (Scope bopScope = tracer.scopeManager().activate(bopSpan, true)) {
+        String opName = new Object() {}.getClass().getEnclosingMethod().getName();
+        BOP opBOP = tracingHelper.continueTraceFromUpstream(opName, instanceIndex);
+        log.info("continue Trace from upstream: {}", opBOP);
+
+        String chunkBusinessLogicName = "businessLogic";
+        Span bopSpan = tracingHelper.tracer().buildSpan(opName).start();
+        try (ScopedChunk scopedChunkBusinessLogic = tracingHelper.startScopedChunk(bopSpan, opBOP, chunkBusinessLogicName, true)) {
             log.info("transform beginning for {}", payload);
+            BOP scopeBOP = scopedChunkBusinessLogic.bop();
 
             MessageDTO transformedPayload;
-            transformedPayload = businessLogic.firstThing(bop, payload);
-            transformedPayload = businessLogic.secondThingInANewSpan(bop, transformedPayload);
-            transformedPayload = businessLogic.thirdThingInANewSpanAndNewDynamicBaggage(bop, transformedPayload, "sink");
-            transformedPayload = businessLogic.fourthBusinessLogicWithoutNewSpan(bop, transformedPayload);
+            transformedPayload = businessLogic.firstThingWithinSameChunk(scopedChunkBusinessLogic, payload);
+            transformedPayload = businessLogic.secondThingInANewSpan(scopedChunkBusinessLogic, transformedPayload);
+            transformedPayload = businessLogic.thirdThingWithNewDynamicBaggage(scopedChunkBusinessLogic, transformedPayload, "sink");
+            transformedPayload = businessLogic.fourthThingWithScopedBOP(scopedChunkBusinessLogic, transformedPayload);
 
             tier2OutputMessageChannel.send(MessageBuilder.withPayload(transformedPayload).build());
         } catch (Throwable t) {
@@ -99,7 +94,8 @@ public class SourceTier2 {
             long duration = System.currentTimeMillis() - startTime;
             averageHelper.newAverage(tier, duration);
             log.info("transform ended and took {} ms overall, {}", duration, averageHelper.toString(tier));
-            //MDCLocal.endChunk(bopName);
+            // bopSpan.finish();
+            // scopedChunkBusinessLogic.close();
         }
     }
 

@@ -1,12 +1,14 @@
 package com.hoffi.minimal.microservices.microservice.bops.outbound;
 
-import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import com.hoffi.minimal.microservices.microservice.bops.channels.SourceChannels;
 import com.hoffi.minimal.microservices.microservice.common.dto.BOP;
+import com.hoffi.minimal.microservices.microservice.common.dto.DTOTestHelper;
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
 import org.junit.jupiter.api.Assertions;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -69,16 +71,27 @@ class SourceTest extends DTOhelpers {
 
         BlockingQueue<Message<?>> messages = collector.forChannel(sourceChannels.sourceOutput());
 
-        // first received message simple check
-        BOP modulebop = BOP.initModule("testms", "1", "testmodule");
-        BOP bop = modulebop.createBOP("fromSource");
-        MessageDTO messageDTO = MessageDTO.create(bop);
-        messageDTO.seq = 1;
-        messageDTO.message = "fromSource";
-        JsonContent<MessageDTO> dtoJson = this.json.write(messageDTO);
-        assertEquals(messages, MessageQueueMatcher.receivesPayloadThat(is(dtoJson.getJson())));
+        // MessageDTO with BOP we use to compare the received message with
+        BOP referenceBOP = DTOTestHelper.getPlainBOP(); // as default constructor is private/protected
+        referenceBOP.bpIds.add("1");
+        referenceBOP.businessDomain = "myCurrentBDomain";
+        referenceBOP.businessProcess = "myBProcessName";
+        referenceBOP.instanceIndex = "0";
+        referenceBOP.operation = "timerMessageSource";
+        MessageDTO referenceMessageDTO = DTOTestHelper.getPlainMessageDTO(); // as default constructor is private/protected
+        referenceMessageDTO.seq = 1;
+        referenceMessageDTO.bop = referenceBOP;
+        referenceMessageDTO.bops.add(referenceBOP);
+        referenceMessageDTO.message = "fromSource";
+        referenceMessageDTO.modifications = "";
 
-        //        // second received message tests with MessageQueueMatcher
+        // every receive for test below increases MessageDTO seq and BOP.bpId
+
+        // Option 1: receive message tests with MessageQueueMatcher
+        JsonContent<MessageDTO> referenceJsonDTO = this.json.write(referenceMessageDTO);
+        assertThat(messages, MessageQueueMatcher.receivesPayloadThat(is(referenceJsonDTO.getJson())));
+
+        //        // 2. receive message tests with MessageQueueMatcher
         //        // but needing FeatureMatcher implementations
 //        // @formatter:off
 //        assertEquals(messages, MessageQueueMatcher.receivesPayloadThat(allOf(
@@ -88,7 +101,7 @@ class SourceTest extends DTOhelpers {
 //        )));
 //        // @formatter:on
 
-        // third received message by calling poll on BlockingQueue by ourself
+        // 3. receive message by calling poll on BlockingQueue by ourself
         // but having to convert the payload also by ourself
         Message<?> receivedMessage = messages.poll(5, TimeUnit.SECONDS);
         String payload = (String) receivedMessage.getPayload();
@@ -96,9 +109,15 @@ class SourceTest extends DTOhelpers {
 
         // @formatter:off
         Assertions.assertAll(
-            () -> assertEquals(Integer.valueOf(2), receivedDTO.seq),
-            () -> assertEquals("fromSource", receivedDTO.message),
-            () -> assertEquals("", receivedDTO.modifications)
+            () -> assertEquals(Integer.valueOf(2), receivedDTO.seq, "seq"),
+            () -> assertEquals(referenceMessageDTO.message, receivedDTO.message, "message"),
+            () -> assertEquals(referenceMessageDTO.modifications, receivedDTO.modifications, "modifications"),
+            () -> assertEquals("2", receivedDTO.bop.toStringBopIds(), "bpIDs"), // as it was the second call to timerMessageSource 
+            () -> assertEquals(referenceMessageDTO.bop.businessDomain, receivedDTO.bop.businessDomain, "businessDomain"),
+            () -> assertEquals(referenceMessageDTO.bop.businessProcess, receivedDTO.bop.businessProcess, "businessProcess"),
+            () -> assertEquals(referenceMessageDTO.bop.chunk, receivedDTO.bop.chunk, "chunk"),
+            () -> assertEquals(referenceMessageDTO.bop.instanceIndex, receivedDTO.bop.instanceIndex, "instanceIndex"),
+            () -> assertEquals(referenceMessageDTO.bop.operation, receivedDTO.bop.operation, "operation")
         );
         // @formatter:on
     }

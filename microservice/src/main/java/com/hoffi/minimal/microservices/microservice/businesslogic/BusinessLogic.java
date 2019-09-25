@@ -3,11 +3,16 @@ package com.hoffi.minimal.microservices.microservice.businesslogic;
 import java.util.Random;
 import com.hoffi.minimal.microservices.microservice.common.dto.BOP;
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
-import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.MDCLocal;
+import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.MDCKEY;
+import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.ScopedBOP;
+import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.ScopedChunk;
+import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.TracingHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import io.opentracing.Span;
 
 /**
  *
@@ -27,8 +32,9 @@ public class BusinessLogic {
     @Value("${app.businessLogic.sleepMax}")
     public int sleepMax;
 
-    // @Autowired
-    // private CustomBaggage customBaggage;
+    @Autowired
+    private TracingHelper tracingHelper;
+
     // @Autowired
     // private Zipkin zipkin;
 
@@ -47,99 +53,101 @@ public class BusinessLogic {
     public BusinessLogic() {
     }
 
-    public MessageDTO firstThing(BOP bop, MessageDTO payload) throws BusinessException {
-        String newChunk = new Object() {
-        }.getClass().getEnclosingMethod().getName();
-        String oldChunk = MDCLocal.startChunk(newChunk);
-        try {
+    public MessageDTO firstThingWithinSameChunk(ScopedChunk scopedChunk, MessageDTO payload) throws BusinessException {
+        String opName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
+        try(ScopedBOP scopedBOP = tracingHelper.startUnscopedChunk(scopedChunk, opName, true)) {
 
-            log.info("BusinessOperation.{} START", newChunk);
+            log.info("BusinessOperation.{} START", opName);
 
             simulateBusinessLogic();
-            MessageDTO transformedPayload = payload.transform(bop, "firstThing Transformation",
-                    String.format(" --> %s>%s:%s-%s-%s", newChunk, bop.bop, bop.microservice, bop.instanceIndex, bop.businessModule));
+            MessageDTO transformedPayload = payload.transform(scopedChunk.bop(), "firstThing Transformation", scopedChunk.bop().toStringMod());
 
-            log.info("BusinessOperation.{} END", newChunk);
-
+            
             return transformedPayload;
+        } catch (Throwable t) {
+            log.error("Exception on message transform: {}", t);
+            scopedChunk.scope.span().log(t.getMessage()); // Report any errors properly.
         } finally {
-            MDCLocal.endChunk(newChunk, oldChunk);
+            log.info("BusinessOperation.{} END", opName);
         }
+        return null;
     }
 
     /** has to be in another bean as its caller for a new span to be started by spring */
     // @NewSpan("secondThing")
-    public MessageDTO secondThingInANewSpan(BOP bop, MessageDTO payload) throws Exception {
-        String newChunk = new Object() {
-        }.getClass().getEnclosingMethod().getName();
-        String oldChunk = MDCLocal.startChunk(newChunk);
-        try {
-            log.info("BusinessOperation.{} START", newChunk);
+    public MessageDTO secondThingInANewSpan(ScopedChunk scopedChunk, MessageDTO payload) throws Exception {
+        String opName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
+        Span bopSpan = tracingHelper.tracer().buildSpan(opName).start();
+        try (ScopedChunk scopedChunkSecondThing = tracingHelper.startScopedChunk(bopSpan, scopedChunk.bop(), opName, true)) {
+            log.info("BusinessOperation.{} START", opName);
+            BOP innerScopeBOP = scopedChunkSecondThing.bop();
 
             // zipkin.tagCurrentSpan(Zipkin.TAGKEY.MYFANCY, "myFancyTagValue");
             log.info("tagged current span with myFancyTag");
             simulateBusinessLogic(Halfmax.HALFMAX);
             // zipkin.annotateCurrentSpan("secondThingAfterSimulation");
+            tracingHelper.tag("manualTag", "manualValue");
             simulateBusinessLogic(Halfmax.HALFMAX);
-            MessageDTO transformedPayload = payload.transform(bop, "secondThing Transformation",
-                    String.format(" --> %s>%s:%s-%s-%s", newChunk, bop.bop, bop.microservice, bop.instanceIndex, bop.businessModule));
-
-            log.info("BusinessOperation.{} END", newChunk);
+            MessageDTO transformedPayload = payload.transform(scopedChunk.bop(), "secondThing Transformation", innerScopeBOP.toStringMod());
 
             return transformedPayload;
-
+            
+        } catch (Throwable t) {
+            log.error("Exception on message transform: {}", t);
+            bopSpan.log(t.getMessage()); // Report any errors properly.
+            throw t;
         } finally {
-            MDCLocal.endChunk(newChunk, oldChunk);
+            log.info("BusinessOperation.{} END", opName);
+            // scopedChunkSecondThing.close();
         }
     }
-
+    
     /** has to be in another bean as its caller for a new span to be started by spring */
     // @NewSpan("thirdThing")
-    public MessageDTO thirdThingInANewSpanAndNewDynamicBaggage(BOP bop, MessageDTO payload,
-            String nextBp) throws Exception {
-        String newChunk = new Object() {
-        }.getClass().getEnclosingMethod().getName();
-        String oldChunk = MDCLocal.startChunk(newChunk);
-        try {
-            log.info("BusinessOperation.{} START", newChunk);
+    public MessageDTO thirdThingWithNewDynamicBaggage(ScopedChunk scopedChunk, MessageDTO payload, String nextBp) throws Exception {
+        String opName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
+        try (ScopedBOP scopedBOP = tracingHelper.startUnscopedChunk(scopedChunk, opName, true)) {
+            log.info("BusinessOperation.{} START", opName);
 
             // so maybe at this point we know more specific which downstream calls are possible
             // customBaggage.dynBaggageTagSuccessorProcess(nextBp);
             // if you want this change to be propagated to zipkin, you have to start a new tagged
             // span
             // as we will do now ...
-            log.info("BusinessOperation.{} new dynamic Baggage", newChunk);
-
+            log.info("BusinessOperation.{} new dynamic Baggage", opName);
+            
             simulateBusinessLogic();
-            MessageDTO transformedPayload = payload.transform(bop, "thirdThing Transformation",
-                    String.format(" --> %s>%s:%s-%s-%s", newChunk, bop.bop, bop.microservice, bop.instanceIndex, bop.businessModule));
-
-            log.info("BusinessOperation.{} END", newChunk);
-
+            MessageDTO transformedPayload = payload.transform(scopedChunk.bop(), "thirdThing Transformation", scopedChunk.bop().toStringMod());
+            
+            
             return transformedPayload;
+        } catch (Throwable t) {
+            log.error("Exception on message transform: {}", t);
+            scopedChunk.scope.span().log(t.getMessage()); // Report any errors properly.
         } finally {
-            MDCLocal.endChunk(newChunk, oldChunk);
+            log.info("BusinessOperation.{} END", opName);
         }
+        return null;
     }
-
-    public MessageDTO fourthBusinessLogicWithoutNewSpan(BOP bop, MessageDTO payload)
-            throws Exception {
-        String newChunk = new Object() {
-        }.getClass().getEnclosingMethod().getName();
-        String oldChunk = MDCLocal.startChunk(newChunk);
-        try {
-            log.info("BusinessOperation.{} START", newChunk);
+    
+    public MessageDTO fourthThingWithScopedBOP(ScopedChunk scopedChunk, MessageDTO payload) throws Exception {
+        String opName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
+        try(ScopedBOP scopedBOP = new ScopedBOP(scopedChunk, opName, true)) {
+            tracingHelper.setMDC(MDCKEY.CHUNK, opName);
+            log.info("BusinessOperation.{} START", opName);
 
             simulateBusinessLogic();
-            MessageDTO transformedPayload = payload.transform(bop, "fourthThing Transformation",
-                    String.format(" --> %s>%s:%s-%s-%s", newChunk, bop.bop, bop.microservice, bop.instanceIndex, bop.businessModule));
+            MessageDTO transformedPayload = payload.transform(scopedChunk.bop(), "fourthThing Transformation", scopedChunk.bop().toStringMod());
 
-            log.info("BusinessOperation.{} END", newChunk);
-
+            
             return transformedPayload;
+        } catch (Throwable t) {
+            log.error("Exception on message transform: {}", t);
+            scopedChunk.scope.span().log(t.getMessage()); // Report any errors properly.
         } finally {
-            MDCLocal.endChunk(newChunk, oldChunk);
+            log.info("BusinessOperation.{} END", opName);
         }
+        return null;
     }
 
     // ==============================================================================

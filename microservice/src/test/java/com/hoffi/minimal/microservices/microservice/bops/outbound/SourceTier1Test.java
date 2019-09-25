@@ -21,16 +21,19 @@ import org.springframework.boot.test.autoconfigure.json.AutoConfigureJsonTesters
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.json.JacksonTester;
 import org.springframework.integration.channel.AbstractMessageChannel;
+import org.springframework.integration.support.MessageBuilder;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.support.ChannelInterceptor;
-import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import annotations.AppTest;
 import annotations.MessagingTest;
 import annotations.TrivialTest;
+import io.opentracing.Scope;
+import io.opentracing.Span;
+import io.opentracing.Tracer;
 import testhelpers.DTOhelpers;
 
 @ActiveProfiles("tier1")
@@ -48,10 +51,20 @@ import testhelpers.DTOhelpers;
 @SpringBootTest
 class SourceTier1Test extends DTOhelpers {
 
+ //   import static org.assertj.core.api.Assertions.assertThat;
+ //   import static org.junit.jupiter.api.Assertions.assertEquals;
+ //   import static org.junit.jupiter.api.Assertions.fail;
+//    import org.springframework.integration.support.MessageBuilder;
+ //   import org.springframework.integration.channel.AbstractMessageChannel;
+
+
     @Value("${app.businessLogic.tier}")
     private String tier;
     @Value("${app.info.instance_index}")
     private String instanceIndex;
+
+    @Autowired
+    private Tracer opentracingTracer;
 
     @Autowired
     private JacksonTester<MessageDTO> json;
@@ -102,33 +115,47 @@ class SourceTier1Test extends DTOhelpers {
         };
         tier1Output.addInterceptor(assertionInterceptor);
 
-        // construct test MessageDTO to be send
-        BOP modulebop = BOP.initModule("testms", "1", "testmodule");
-        BOP bop = modulebop.createBOP("fromSource");
-        MessageDTO messageDTO = MessageDTO.create(bop);
-        messageDTO.seq = 42;
-        messageDTO.message = "fromSource";
+        // prepare the test by simulate a message send
+        String testOpName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
+        testOpName = SourceTier1.class.getSimpleName() + "." + testOpName;
 
-        // start Trace and  and send messageDTO
-        //customBaggage.startTrace("testBP", 42, "nextMS");
-        Message<MessageDTO> messageToSend = MessageBuilder.withPayload(messageDTO)
-                // .setHeader("X-B3-TraceId", "testTrace").setHeader("X-B3-SpanId", "testSpan")
-                .build();
-        tier1Input.send(messageToSend);
+        // start Trace
+        Span bopSpan = opentracingTracer.buildSpan("testOperationFunc").start();
+        try (Scope bopScope = opentracingTracer.scopeManager().activate(bopSpan, true)) {
+
+            // construct test MessageDTO for test simulation
+            BOP opBOP = BOP.initInitially("testDomain", "testProcess", testOpName, "42", "5");
+            MessageDTO messageDTO = MessageDTO.create(opBOP, "testMessage", "initial Modification");
+            messageDTO.seq = 42;
+            Message<MessageDTO> messageToSend = MessageBuilder.withPayload(messageDTO)
+                    // .setHeader("X-B3-TraceId", "testTrace").setHeader("X-B3-SpanId", "testSpan")
+                    .build();
+
+            // simulate send
+            tier1Input.send(messageToSend);
+
+        } catch (Exception e) {
+            bopSpan.log(e.getMessage()); // Report any errors properly.
+        } finally {
+            // MDCLocal.endChunk(bopName);
+            bopSpan.finish(); // Optionally close the Span.
+        }
 
         // receive via assertionInterceptor's set messageAtomicReference
         messageWasCompletelyProcesses.await(500, TimeUnit.MILLISECONDS);
-        Message<?> receivedMessage = atomicReference.get();
+        Message<?> receivedMessage = null;
+        receivedMessage = atomicReference.get();
         assertThat(receivedMessage).isNotNull();
 
         // extract receivedDTO from message and do assertions
         String payload = (String) receivedMessage.getPayload();
         MessageDTO receivedDTO = json.parse(payload).getObject();
+
         // @formatter:off
         Assertions.assertAll(
             () -> assertEquals(Integer.valueOf(42), receivedDTO.seq),
-            () -> assertEquals("transformmanualNewSpan", receivedDTO.message),
-            () -> assertEquals(" ==> tier1:i0:firstThing ==> tier1:i0:secondThingInANewSpan ==> tier1:i0:thirdThingInANewSpanAndNewDynamicBaggage ==> tier1:i0:fourthBusinessLogicWithoutNewSpan ==> tier1:i0:transform", receivedDTO.modifications)
+            () -> assertEquals("transformed by SourceTier1", receivedDTO.message),
+            () -> assertEquals("initial Modification --> chunk default in sourceTier1SendTo of testProcess/testDomain i0 --> chunk default in sourceTier1SendTo of testProcess/testDomain i0 --> chunk default in sourceTier1SendTo of testProcess/testDomain i0 --> chunk default in sourceTier1SendTo of testProcess/testDomain i0 --> manualNewSpan", receivedDTO.modifications)
         );
         // @formatter:on
     }

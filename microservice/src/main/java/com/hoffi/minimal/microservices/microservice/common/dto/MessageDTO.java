@@ -12,7 +12,7 @@ import org.springframework.util.Assert;
  */
 public class MessageDTO extends DTO {
     private static final long serialVersionUID = 1L;
-    private static AtomicInteger seqGenerator = new AtomicInteger();
+    private static AtomicInteger seqGenerator = new AtomicInteger(0);
 
     private enum CREATEMODE {
         NEW, CLONE
@@ -22,12 +22,13 @@ public class MessageDTO extends DTO {
         return new MessageDTO(bop, CREATEMODE.NEW);
     }
 
-    public static MessageDTO create(BOP bop, String message, String modifiers) {
-        return new MessageDTO(bop, message, modifiers, CREATEMODE.NEW);
+    public static MessageDTO create(BOP bop, String message, String modifications) {
+        return new MessageDTO(bop, message, modifications, CREATEMODE.NEW);
     }
 
     public Integer seq = Integer.valueOf(-1);
-    public LinkedList<BOP> bops = new LinkedList<>();
+    public BOP bop;
+    public LinkedList<BOP> bops = new LinkedList<>(); // only for demoing purposes
     /** set to new content on any downstream microservice transformation on it */
     public String message = "<initial>";
     /** appended to (semicolon separated) on any downstream microservice transformation on it */
@@ -35,7 +36,7 @@ public class MessageDTO extends DTO {
 
 
     /** private noArgs constructor (needed for jackson json deserialization */
-    private MessageDTO() {}
+    protected MessageDTO() {}
 
     /** private constructor */
     private MessageDTO(BOP bop, CREATEMODE mode) {
@@ -44,6 +45,7 @@ public class MessageDTO extends DTO {
             seq = seqGenerator.incrementAndGet();
             bops.add(bop); // initial/creating bop
         }
+        this.bop = bop;
     }
 
     /** private constructor */
@@ -58,7 +60,7 @@ public class MessageDTO extends DTO {
     private MessageDTO newCopy(BOP bop) {
         MessageDTO newMessageDTO = new MessageDTO(bop, CREATEMODE.CLONE);
         newMessageDTO.seq = this.seq;
-        newMessageDTO.bops = this.bops;
+        newMessageDTO.bops = this.bops; // only for demoing purposes
         newMessageDTO.message = this.message;
         newMessageDTO.modifications = this.modifications;
         return newMessageDTO;
@@ -73,13 +75,18 @@ public class MessageDTO extends DTO {
         MessageDTO newMessageDTO = newCopy(bop);
         newMessageDTO.bops.add(bop);
         newMessageDTO.message = newMessage;
-        newMessageDTO.modifications += (newMessageDTO.modifications.length() > 0 ? " ; " : "") + modification;
+        newMessageDTO.modifications += (newMessageDTO.modifications.length() > 0 ? " --> " : "") + modification;
         return newMessageDTO;
+    }
+
+    public String toStringBopIds() {
+        return this.bop.toStringBopIds();
     }
 
     @Override
     public String toString() {
-        return String.format("\nMessageDTO{%s\nID:%8d MSG:'%s' MODS:'%s'}",
-                bops.stream().map(Object::toString).collect(Collectors.joining(",")), seq, message, modifications);
+        return String.format("\nMessageDTO{Seq:%8d MSG:'%s' MODS:'%s'}\n%s",
+                seq, message, modifications, 
+                bops.stream().map(Object::toString).collect(Collectors.joining(",", "", "\n")));
     }
 }

@@ -1,14 +1,12 @@
 package com.hoffi.minimal.microservices.microservice.bops.outbound;
 
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 import com.hoffi.minimal.microservices.microservice.bops.channels.Tier1Channels;
 import com.hoffi.minimal.microservices.microservice.businesslogic.BusinessLogic;
 import com.hoffi.minimal.microservices.microservice.common.dto.BOP;
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
 import com.hoffi.minimal.microservices.microservice.helpers.AverageDurationHelper;
-import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.ScopedChunk;
-import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.TracingHelper;
+import com.hoffi.minimal.microservices.microservice.tracing.SpanWithBOP;
+import com.hoffi.minimal.microservices.microservice.tracing.TracingHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,9 +17,7 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
-import io.opentracing.Span;
-import io.opentracing.Tracer;
-import io.opentracing.tag.Tags;
+import brave.Span;
 
 @Profile({"tier1"})
 @Component
@@ -81,70 +77,89 @@ public class SourceTier1 {
         // wrong place to log as neither the nested Span has started, nor the BOP was initialized
         // log.info("transform beginning for {}", payload);
         String opName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
-        BOP opBOP = tracingHelper.continueTraceFromUpstream(opName, instanceIndex);
-        log.info("continue Trace from upstream: {}", opBOP);
+        BOP opBOP = tracingHelper.initBOPfromUpstream(opName, instanceIndex);
+        log.info("send: continue Trace from upstream: {}", opBOP);
 
-        String chunkNameBusLogic = "businessLogic";
-        boolean finishOnSpanScopeClose = true;
-        Span bopSpan = tracingHelper.tracer().buildSpan(opName).start();
-        try (ScopedChunk scopedChunkBusinessLogic = tracingHelper.startScopedChunk(bopSpan, opBOP, chunkNameBusLogic, finishOnSpanScopeClose)) {
-            log.info("transform within {} beginning for {}", chunkNameBusLogic, payload);
-            BOP scopeBOP = scopedChunkBusinessLogic.bop();
+        Span opSpan = tracingHelper.tracer().nextSpan().name(opName);
+        try (SpanWithBOP opSpanWithBOP = tracingHelper.continueTraceFromUpstream(opSpan, opBOP, "send")) {
+            BOP spanBOP = opSpanWithBOP.bop();
+            log.info("send in Span: {}", spanBOP);
 
-            Tracer.SpanBuilder x;
-            Tags tags;
+            String chunkNameBusLogic = "businessLogic";
+            Span businessLogicSpan = tracingHelper.tracer().nextSpan().name(opName);
+            try (SpanWithBOP spanWithBOP_BusinessLogic = tracingHelper.startSpan(businessLogicSpan, opBOP, chunkNameBusLogic)) {
+                log.info("transform within {} beginning for {}", chunkNameBusLogic, payload);
+                BOP scopeBOP = spanWithBOP_BusinessLogic.bop();
 
-            MessageDTO transformedPayload;
-            transformedPayload = businessLogic.firstThingWithinSameChunk(scopedChunkBusinessLogic, payload);
-            log.info("inbetween firstThing and secondThing");
-            transformedPayload = businessLogic.secondThingInANewSpan(scopedChunkBusinessLogic, transformedPayload);
-            log.info("inbetween secondThink and thirdThing");
-            transformedPayload = businessLogic.thirdThingWithNewDynamicBaggage(scopedChunkBusinessLogic, transformedPayload, "sink2only");
-            log.info("inbetween thirdThing and fourthThing");
-            transformedPayload = businessLogic.fourthThingWithScopedBOP(scopedChunkBusinessLogic, transformedPayload);
-            
-            log.info("inbetween fourthThing and notWorkingInner");
-            notWorkingInnerThingInANewSpanAndNewDynamicBaggage(transformedPayload);
-            log.info("inbetween notWorkingInner and manualSpan");
+                MessageDTO transformedPayload;
+                transformedPayload = businessLogic.firstThingWithinSameSpan(spanWithBOP_BusinessLogic, payload);
+                log.info("inbetween firstThing and secondThing");
+                transformedPayload = businessLogic.secondThingInNewSpan(spanWithBOP_BusinessLogic, transformedPayload);
+                log.info("inbetween secondThink and thirdThing");
+                transformedPayload = businessLogic.thirdThingWithNewDynamicBaggage(spanWithBOP_BusinessLogic, transformedPayload, "sink2only");
+                log.info("inbetween thirdThing and fourthThing");
+                transformedPayload = businessLogic.fourthThingWithScopedBOP(spanWithBOP_BusinessLogic, transformedPayload);
+                
+                log.info("inbetween fourthThing and notWorkingInner");
+                notWorkingInnerThingInANewSpanAndNewDynamicBaggage(transformedPayload);
+                log.info("inbetween notWorkingInner and manualSpan");
 
-            String newInnerChunk = "manualSpan";
-            Span innerChunkSpan = tracingHelper.tracer().buildSpan(newInnerChunk).start();
-            try (ScopedChunk scopedChunkInnerChunk = tracingHelper.startScopedChunk(innerChunkSpan, scopedChunkBusinessLogic.bop(), newInnerChunk, true)) {
-                log.info("transform manualNewSpan {} start...", newInnerChunk);
+                String newInnerChunk = "manualSpan";
+                Span innerChunkSpan = tracingHelper.tracer().nextSpan().name(newInnerChunk);
+                try (SpanWithBOP spanWithBOP_innerManual = tracingHelper.startSpan(innerChunkSpan, spanWithBOP_BusinessLogic.bop(), newInnerChunk)) {
+                    log.info("transform manualNewSpan {} start...", newInnerChunk);
 
-                MessageDTO beforePayload = transformedPayload;
-                transformedPayload = beforePayload.transform(opBOP, "transformed by SourceTier1", "manualNewSpan");
-                log.info("[{}]Transformed from '{}' to '{}'", instanceIndex, beforePayload, transformedPayload);
+                    MessageDTO beforePayload = transformedPayload;
+                    transformedPayload = beforePayload.transform(opBOP, "transformed by SourceTier1", "manualNewSpan");
+                    log.info("[{}]Transformed from '{}' to '{}'", instanceIndex, beforePayload, transformedPayload);
 
-                tracingHelper.alterChunk(scopedChunkInnerChunk, "sendWithinManualSpan");
+                    tracingHelper.alterChunk(spanWithBOP_innerManual, "sendWithinManualSpan");
 
-                log.info("send to next tier within manualNewSpan but new chunk");
-                tier1OutputMessageChannel.send(MessageBuilder.withPayload(transformedPayload).build());
-            } catch (Throwable t) {
-                log.error("Exception on message transform: {}", t);
-                innerChunkSpan.log(t.getMessage()); // Report any errors properly.
-                throw t;
+                    log.info("send to next tier within manualNewSpan but new chunk");
+                    tier1OutputMessageChannel.send(MessageBuilder.withPayload(transformedPayload).build());
+                } catch (Throwable t) {
+                    // as SpanWithBOP's ScopedBOP and SpanInScope was already autofinished
+                    // we have to get back its Span into Scope (=active)
+                    // chunk will be reported as it was before this try
+                    tracingHelper.tracer().withSpanInScope(innerChunkSpan);
+                    log.error("Exception on message transform in inner manual Span: {}", t);
+                    innerChunkSpan.annotate(t.getMessage()); // Report any errors properly.
+                    throw t;
+                } finally {
+                    tracingHelper.finishSpan(innerChunkSpan, scopeBOP);
+                }
+                log.info("===after {}", newInnerChunk);
+            } catch (Exception e) {
+                // as SpanWithBOP's ScopedBOP and SpanInScope was already autofinished
+                // we have to get back its Span into Scope (=active)
+                // chunk will be reported as it was before this try
+                tracingHelper.tracer().withSpanInScope(businessLogicSpan);
+                log.error("Exception on message transform: {}", e);
+                businessLogicSpan.annotate(e.getMessage()); // Report any errors properly.
+                throw e;
             } finally {
-                // scopedChunkInnerChunk.close();
+                tracingHelper.finishSpan(businessLogicSpan, spanBOP);
             }
-            log.info("===after {}", newInnerChunk);
+
+            log.info("finishing operation {} ...", opName);
         } catch (Throwable t) {
-            log.error("Exception on message transform: {}", t);
-            bopSpan.log(t.getMessage()); // Report any errors properly.
-            throw t;
+            // as SpanWithBOP's ScopedBOP and SpanInScope was already autofinished
+            // we have to get back its Span into Scope (=active)
+            // chunk will be reported as it was before this try
+            tracingHelper.tracer().withSpanInScope(opSpan);
+            log.error(opName, t);
+            // Report any errors properly.
+            opSpan.annotate(String.format("Exception: in operation: %s parentChunk: %s Exception: %s", opBOP.operation, opBOP.chunk, t.getMessage()));
         } finally {
             long duration = System.currentTimeMillis() - startTime;
             averageHelper.newAverage(tier, duration);
             log.info("transform ended and took {} ms overall, {}", duration, averageHelper.toString(tier));
-            // bopSpan.finish();
-            // scopedChunkBusinessLogic.close();
+            tracingHelper.finishSpanAndOperation(opSpan, opBOP); // trace will not be propagated to Zipkin/Jaeger unless explicitly finished
+
+            log.info("finished operation: {}", opName);
         }
 
-        log.info("========AFTER AFTER 'businessLogic' chunk has finished===========, now {}",
-                StreamSupport
-                        .stream(tracingHelper.tracer().activeSpan().context().baggageItems().spliterator(), false)
-                        .map(entry -> entry.getKey() + ":" + entry.getValue())
-                        .collect(Collectors.joining(", ", "[", "]")));
+        log.info("========AFTER AFTER 'businessLogic' chunk has finished===========");
 
     }
 

@@ -4,7 +4,8 @@ import com.hoffi.minimal.microservices.microservice.bops.channels.Tier1Channels;
 import com.hoffi.minimal.microservices.microservice.bops.outbound.SourceTier1;
 import com.hoffi.minimal.microservices.microservice.common.dto.BOP;
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
-import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.TracingHelper;
+import com.hoffi.minimal.microservices.microservice.tracing.SpanWithBOP;
+import com.hoffi.minimal.microservices.microservice.tracing.TracingHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,7 @@ import org.springframework.cloud.stream.annotation.StreamListener;
 import org.springframework.context.annotation.Profile;
 import org.springframework.messaging.Message;
 import org.springframework.stereotype.Component;
+import brave.Span;
 
 @Profile({"tier1"})
 @Component
@@ -30,16 +32,33 @@ public class SinkTier1 {
 
     /** instrumentation has started a new Span for us */
     @StreamListener(Tier1Channels.INPUT)
-    public void sinkTier1StreamListener(MessageDTO payload, Message<MessageDTO> wholeMessage)
-            throws Exception {
+    public void sinkTier1StreamListener(MessageDTO payload, Message<MessageDTO> wholeMessage) throws Exception {
         String opName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
-        BOP opBOP = tracingHelper.continueTraceFromUpstream(opName, instanceIndex);
+        BOP opBOP = tracingHelper.initBOPfromUpstream(opName, instanceIndex);
         log.info("receive: continue Trace from upstream: {}", opBOP);
 
-        // log.info("[{}]Received: '{}' wholeMessage '{}'", instanceIndex, payload, wholeMessage);
-        log.info("[{}]Received: '{}'", instanceIndex, wholeMessage);
+        Span opSpan = tracingHelper.tracer().nextSpan().name(opName);
+        try (SpanWithBOP opSpanWithBOP = tracingHelper.continueTraceFromUpstream(opSpan, opBOP, "receive")) {
+            BOP spanBOP = opSpanWithBOP.bop();
+            log.info("receive: {}", spanBOP);
 
-        sourceTier1.sourceTier1SendTo(payload);
+            // log.info("[{}]Received: '{}' wholeMessage '{}'", instanceIndex, payload, wholeMessage);
+            log.info("[{}]Received: '{}'", instanceIndex, wholeMessage);
+
+            sourceTier1.sourceTier1SendTo(payload);
+            log.info("finishing operation {} ...", opName);
+        } catch (Throwable t) {
+            // as SpanWithBOP's ScopedBOP and SpanInScope was already autofinished
+            // we have to get back its Span into Scope (=active)
+            // chunk will be reported as it was before this try
+            tracingHelper.tracer().withSpanInScope(opSpan);
+            log.error(opName, t);
+            // Report any errors properly.
+            opSpan.annotate(String.format("Exception: in operation: %s parentChunk: %s Exception: %s", opBOP.operation, opBOP.chunk, t.getMessage()));
+        } finally {
+            tracingHelper.finishSpanAndOperation(opSpan, opBOP); // trace will not be propagated to Zipkin/Jaeger unless explicitly finished
+            log.info("finished operation: {}", opName);
+        }
     }
 
 }

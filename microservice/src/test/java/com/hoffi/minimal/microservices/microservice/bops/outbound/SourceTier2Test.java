@@ -10,8 +10,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.hoffi.minimal.microservices.microservice.bops.channels.Tier2Channels;
 import com.hoffi.minimal.microservices.microservice.common.dto.BOP;
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
-import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.ScopedChunk;
-import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.TracingHelper;
+import com.hoffi.minimal.microservices.microservice.tracing.SpanWithBOP;
+import com.hoffi.minimal.microservices.microservice.tracing.TracingHelper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +34,6 @@ import org.springframework.test.context.TestPropertySource;
 import annotations.AppTest;
 import annotations.MessagingTest;
 import annotations.TrivialTest;
-import io.opentracing.Span;
 import testhelpers.DTOhelpers;
 
 @ActiveProfiles("tier2")
@@ -98,9 +97,10 @@ class SourceTier2Test extends DTOhelpers {
 
         BOP opBOP = BOP.initInitially("testDomain", "testProcess", testOpName, "42", "5");
         // Start a new Trace for BOP
-        Span bopSpan = tracingHelper.tracer().buildSpan(testOpName).start();
-        try (ScopedChunk scopedChunkBusinessLogic = tracingHelper.startScopedChunk(bopSpan, opBOP, "timerSend", true)) {
-            BOP scopeBOP = scopedChunkBusinessLogic.bop();
+        brave.Span bopSpan = tracingHelper.tracer().nextSpan().name(testOpName);
+        try (SpanWithBOP spanWithBOP = tracingHelper.startSpan(bopSpan, opBOP, "minimalTest")) {
+            BOP scopeBOP = spanWithBOP.bop();
+
             MessageDTO messageDTO = MessageDTO.create(scopeBOP, "testMessage", "initial Modification");
             messageDTO.seq = 42;
 
@@ -110,7 +110,7 @@ class SourceTier2Test extends DTOhelpers {
 
             tier2Channels.tier2Input().send(messageToSend);
         } catch (Throwable t) {
-            bopSpan.log(t.getMessage()); // Report any errors properly.
+            bopSpan.annotate(t.getMessage()); // Report any errors properly.
         }
         
         @SuppressWarnings("unchecked")

@@ -3,16 +3,15 @@ package com.hoffi.minimal.microservices.microservice.businesslogic;
 import java.util.Random;
 import com.hoffi.minimal.microservices.microservice.common.dto.BOP;
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
-import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.MDCKEY;
-import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.ScopedBOP;
-import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.ScopedChunk;
-import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.TracingHelper;
+import com.hoffi.minimal.microservices.microservice.tracing.ScopedBOP;
+import com.hoffi.minimal.microservices.microservice.tracing.SpanWithBOP;
+import com.hoffi.minimal.microservices.microservice.tracing.TracingHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import io.opentracing.Span;
+import brave.Span;
 
 /**
  *
@@ -53,60 +52,70 @@ public class BusinessLogic {
     public BusinessLogic() {
     }
 
-    public MessageDTO firstThingWithinSameChunk(ScopedChunk scopedChunk, MessageDTO payload) throws BusinessException {
+    public MessageDTO firstThingWithinSameSpan(SpanWithBOP spanWithBOP, MessageDTO payload) throws BusinessException {
+        return firstThingWithinSameSpan(spanWithBOP.bop(), payload);
+    }
+    public MessageDTO firstThingWithinSameSpan(BOP bop, MessageDTO payload) throws BusinessException {
         String opName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
-        try(ScopedBOP scopedBOP = tracingHelper.startUnscopedChunk(scopedChunk, opName, true)) {
+        try(ScopedBOP scopedBOP = tracingHelper.startUnscopedChunk(bop, opName)) {
 
             log.info("BusinessOperation.{} START", opName);
 
             simulateBusinessLogic();
-            MessageDTO transformedPayload = payload.transform(scopedChunk.bop(), "firstThing Transformation", scopedChunk.bop().toStringMod());
+            MessageDTO transformedPayload = payload.transform(bop, "firstThing Transformation", bop.toStringMod());
 
             
             return transformedPayload;
         } catch (Throwable t) {
             log.error("Exception on message transform: {}", t);
-            scopedChunk.scope.span().log(t.getMessage()); // Report any errors properly.
+            tracingHelper.annotate(t.getMessage()); // Report any errors properly to active Span.
         } finally {
             log.info("BusinessOperation.{} END", opName);
         }
         return null;
     }
 
-    /** has to be in another bean as its caller for a new span to be started by spring */
-    // @NewSpan("secondThing")
-    public MessageDTO secondThingInANewSpan(ScopedChunk scopedChunk, MessageDTO payload) throws Exception {
+    public MessageDTO secondThingInNewSpan(SpanWithBOP spanWithBOP, MessageDTO payload) throws Exception {
+        return secondThingInNewSpan(spanWithBOP.bop(), payload);
+    }
+    public MessageDTO secondThingInNewSpan(BOP bop, MessageDTO payload) throws Exception {
         String opName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
-        Span bopSpan = tracingHelper.tracer().buildSpan(opName).start();
-        try (ScopedChunk scopedChunkSecondThing = tracingHelper.startScopedChunk(bopSpan, scopedChunk.bop(), opName, true)) {
+        Span bopSpan = tracingHelper.tracer().nextSpan().name(opName);
+        try (SpanWithBOP spanWithBOPSecondThing = tracingHelper.startSpan(bopSpan, bop, opName)) {
             log.info("BusinessOperation.{} START", opName);
-            BOP innerScopeBOP = scopedChunkSecondThing.bop();
+            BOP innerScopeBOP = spanWithBOPSecondThing.bop();
 
-            // zipkin.tagCurrentSpan(Zipkin.TAGKEY.MYFANCY, "myFancyTagValue");
-            log.info("tagged current span with myFancyTag");
+            tracingHelper.tag(bopSpan, "myFancyTag", "myFancyTagValue");
+            tracingHelper.annotate(bopSpan, "here something fancy happened ...");
+            log.info("tagged and annotated current span fancy stuff");
             simulateBusinessLogic(Halfmax.HALFMAX);
             // zipkin.annotateCurrentSpan("secondThingAfterSimulation");
-            tracingHelper.tag("manualTag", "manualValue");
+            bopSpan.annotate("middleOfSecondThing");
             simulateBusinessLogic(Halfmax.HALFMAX);
-            MessageDTO transformedPayload = payload.transform(scopedChunk.bop(), "secondThing Transformation", innerScopeBOP.toStringMod());
+            MessageDTO transformedPayload = payload.transform(bop, "secondThing Transformation", innerScopeBOP.toStringMod());
 
             return transformedPayload;
             
         } catch (Throwable t) {
+            // as SpanWithBOP's ScopedBOP and SpanInScope was already autofinished
+            // we have to get back its Span into Scope (=active)
+            // chunk will be reported as it was before this try
+            tracingHelper.tracer().withSpanInScope(bopSpan);
             log.error("Exception on message transform: {}", t);
-            bopSpan.log(t.getMessage()); // Report any errors properly.
+            bopSpan.annotate(t.getMessage()); // Report any errors properly.
             throw t;
         } finally {
             log.info("BusinessOperation.{} END", opName);
-            // scopedChunkSecondThing.close();
+            tracingHelper.finishSpan(bopSpan, bop); // trace will not be propagated to Zipkin/Jaeger unless explicitly finished
         }
     }
     
-    /** has to be in another bean as its caller for a new span to be started by spring */
-    // @NewSpan("thirdThing")
-    public MessageDTO thirdThingWithNewDynamicBaggage(ScopedChunk scopedChunk, MessageDTO payload, String nextBp) throws Exception {
+    public MessageDTO thirdThingWithNewDynamicBaggage(SpanWithBOP spanWithBOP, MessageDTO payload, String nextBp) throws Exception {
+        return thirdThingWithNewDynamicBaggage(spanWithBOP.bop(), payload, nextBp);
+    }
+    public MessageDTO thirdThingWithNewDynamicBaggage(BOP bop, MessageDTO payload, String nextBp) throws Exception {
         String opName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
-        try (ScopedBOP scopedBOP = tracingHelper.startUnscopedChunk(scopedChunk, opName, true)) {
+        try (ScopedBOP scopedBOP = tracingHelper.startUnscopedChunk(bop, opName)) {
             log.info("BusinessOperation.{} START", opName);
 
             // so maybe at this point we know more specific which downstream calls are possible
@@ -117,33 +126,36 @@ public class BusinessLogic {
             log.info("BusinessOperation.{} new dynamic Baggage", opName);
             
             simulateBusinessLogic();
-            MessageDTO transformedPayload = payload.transform(scopedChunk.bop(), "thirdThing Transformation", scopedChunk.bop().toStringMod());
+            MessageDTO transformedPayload = payload.transform(bop, "thirdThing Transformation", bop.toStringMod());
             
             
             return transformedPayload;
         } catch (Throwable t) {
             log.error("Exception on message transform: {}", t);
-            scopedChunk.scope.span().log(t.getMessage()); // Report any errors properly.
+            tracingHelper.annotate(t.getMessage()); // Report any errors properly.
         } finally {
             log.info("BusinessOperation.{} END", opName);
         }
         return null;
     }
     
-    public MessageDTO fourthThingWithScopedBOP(ScopedChunk scopedChunk, MessageDTO payload) throws Exception {
+    public MessageDTO fourthThingWithScopedBOP(SpanWithBOP spanWithBOP, MessageDTO payload) throws Exception {
+        return fourthThingWithScopedBOP(spanWithBOP.bop(), payload);
+    }
+    public MessageDTO fourthThingWithScopedBOP(BOP bop, MessageDTO payload) throws Exception {
         String opName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
-        try(ScopedBOP scopedBOP = new ScopedBOP(scopedChunk, opName, true)) {
-            tracingHelper.setMDC(MDCKEY.CHUNK, opName);
+        try(ScopedBOP scopedBOP = tracingHelper.startUnscopedChunk(bop, opName)) {
+            // tracingHelper.setMDC(MDCKEY.CHUNK, opName);
             log.info("BusinessOperation.{} START", opName);
 
             simulateBusinessLogic();
-            MessageDTO transformedPayload = payload.transform(scopedChunk.bop(), "fourthThing Transformation", scopedChunk.bop().toStringMod());
+            MessageDTO transformedPayload = payload.transform(bop, "fourthThing Transformation", bop.toStringMod());
 
             
             return transformedPayload;
         } catch (Throwable t) {
             log.error("Exception on message transform: {}", t);
-            scopedChunk.scope.span().log(t.getMessage()); // Report any errors properly.
+            tracingHelper.annotate(t.getMessage()); // Report any errors properly.
         } finally {
             log.info("BusinessOperation.{} END", opName);
         }

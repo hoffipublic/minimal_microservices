@@ -22,27 +22,28 @@ spring:
       probability: 1.0
     annotation:
       enabled: true
-    baggage-keys: # keys that travel with inter-process calls (see MDCLocal.java)
+    # keys that travel with inter-process calls (see MDCLocal.java)
+    # these keys will be prefix by "baggage-" (if http) or "baggage_" (if messaging)
+    baggage-keys:
     - bpids
     - ddd
     - bp
     local-keys: # keys that are only propagated within the app
-    - i
-    propagation-keys: # keys propagated to zipkin
-    - bpids
-    - ddd
-    - bp
     - op
     - chunk
+    - i
+    # keys that travel with inter-process calls (see MDCLocal.java)
+    # these keys will not be prefixed
+    propagation-keys: # keys propagated to zipkin
     log:
       slf4j:
-        whitelisted-mdc-keys: # baggage-keys that are copied to slf4j MDC
+        whitelisted-mdc-keys: # (baggage|propagation)-keys that are copied to slf4j MDC
         - bpids
         - ddd
         - bp
-        - i
         - op
         - chunk
+        - i
     rxjava:
       schedulers:
         ignoredthreads:

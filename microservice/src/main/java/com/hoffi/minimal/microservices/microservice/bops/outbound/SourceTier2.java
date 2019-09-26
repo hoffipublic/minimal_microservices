@@ -5,8 +5,8 @@ import com.hoffi.minimal.microservices.microservice.businesslogic.BusinessLogic;
 import com.hoffi.minimal.microservices.microservice.common.dto.BOP;
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
 import com.hoffi.minimal.microservices.microservice.helpers.AverageDurationHelper;
-import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.ScopedChunk;
-import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.TracingHelper;
+import com.hoffi.minimal.microservices.microservice.tracing.SpanWithBOP;
+import com.hoffi.minimal.microservices.microservice.tracing.TracingHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +17,7 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
-import io.opentracing.Span;
+import brave.Span;
 
 @Profile({ "tier2" })
 @Component
@@ -70,32 +70,39 @@ public class SourceTier2 {
     public void sourceTier2SendTo(MessageDTO payload) throws Exception {
         long startTime = System.currentTimeMillis();
         String opName = new Object() {}.getClass().getEnclosingMethod().getName();
-        BOP opBOP = tracingHelper.continueTraceFromUpstream(opName, instanceIndex);
-        log.info("continue Trace from upstream: {}", opBOP);
+        BOP opBOP = tracingHelper.initBOPfromUpstream(opName, instanceIndex);
+        log.info("send: continue Trace from upstream: {}", opBOP);
 
-        String chunkBusinessLogicName = "businessLogic";
-        Span bopSpan = tracingHelper.tracer().buildSpan(opName).start();
-        try (ScopedChunk scopedChunkBusinessLogic = tracingHelper.startScopedChunk(bopSpan, opBOP, chunkBusinessLogicName, true)) {
+        Span opSpan = tracingHelper.tracer().nextSpan().name(opName);
+        try (SpanWithBOP opSpanWithBOP = tracingHelper.continueTraceFromUpstream(opSpan, opBOP, "send")) {
+            BOP spanBOP = opSpanWithBOP.bop();
+            log.info("send in Span: {}", spanBOP);
+
             log.info("transform beginning for {}", payload);
-            BOP scopeBOP = scopedChunkBusinessLogic.bop();
 
             MessageDTO transformedPayload;
-            transformedPayload = businessLogic.firstThingWithinSameChunk(scopedChunkBusinessLogic, payload);
-            transformedPayload = businessLogic.secondThingInANewSpan(scopedChunkBusinessLogic, transformedPayload);
-            transformedPayload = businessLogic.thirdThingWithNewDynamicBaggage(scopedChunkBusinessLogic, transformedPayload, "sink");
-            transformedPayload = businessLogic.fourthThingWithScopedBOP(scopedChunkBusinessLogic, transformedPayload);
+            transformedPayload = businessLogic.firstThingWithinSameSpan(opBOP, payload);
+            transformedPayload = businessLogic.secondThingInNewSpan(opBOP, transformedPayload);
+            transformedPayload = businessLogic.thirdThingWithNewDynamicBaggage(opBOP, transformedPayload, "sink");
+            transformedPayload = businessLogic.fourthThingWithScopedBOP(opBOP, transformedPayload);
 
             tier2OutputMessageChannel.send(MessageBuilder.withPayload(transformedPayload).build());
+            log.info("finishing operation {} ...", opName);
         } catch (Throwable t) {
-            log.error("Exception on message transform: {}", t);
-            bopSpan.log(t.getMessage()); // Report any errors properly.
-            throw t;
+            // as SpanWithBOP's ScopedBOP and SpanInScope was already autofinished
+            // we have to get back its Span into Scope (=active)
+            // chunk will be reported as it was before this try
+            tracingHelper.tracer().withSpanInScope(opSpan);
+            log.error(opName, t);
+            // Report any errors properly.
+            opSpan.annotate(String.format("Exception: in operation: %s parentChunk: %s Exception: %s", opBOP.operation, opBOP.chunk, t.getMessage()));
         } finally {
             long duration = System.currentTimeMillis() - startTime;
             averageHelper.newAverage(tier, duration);
             log.info("transform ended and took {} ms overall, {}", duration, averageHelper.toString(tier));
-            // bopSpan.finish();
-            // scopedChunkBusinessLogic.close();
+            tracingHelper.finishSpanAndOperation(opSpan, opBOP); // trace will not be propagated to Zipkin/Jaeger unless explicitly finished
+
+            log.info("finished operation: {}", opName);
         }
     }
 

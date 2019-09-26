@@ -1,4 +1,4 @@
-// package com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging;
+// package com.hoffi.minimal.microservices.microservice.tracing;
 
 // import org.springframework.beans.factory.annotation.Autowired;
 // import org.springframework.stereotype.Component;

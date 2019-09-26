@@ -6,7 +6,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import com.hoffi.minimal.microservices.microservice.helpers.ImplementationHint;
-import com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging.TracingHelper;
+import com.hoffi.minimal.microservices.microservice.tracing.TracingHelper;
 
 /**
  * AS THIS IS A DTO KEEP IT CLEAN OF ANY IMPORTS/DEPENDENCIES THAT CLUTTER SERIALIZATION/DESERIALIZATION!!!
@@ -68,7 +68,7 @@ public class BOP extends DTO {
         bop.businessProcess = businessProcess;
         // MDC only
         bop.operation = operation;
-        bop.instanceIndex = instanceIndex;
+        bop.instanceIndex = "i"+instanceIndex;
         // leave chunk at default
         return bop;
     }

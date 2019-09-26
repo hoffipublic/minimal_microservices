@@ -10,8 +10,12 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.hoffi.minimal.microservices.microservice.bops.channels.Tier1Channels;
 import com.hoffi.minimal.microservices.microservice.common.dto.BOP;
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
+import com.hoffi.minimal.microservices.microservice.tracing.SpanWithBOP;
+import com.hoffi.minimal.microservices.microservice.tracing.TracingHelper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,9 +35,7 @@ import org.springframework.test.context.TestPropertySource;
 import annotations.AppTest;
 import annotations.MessagingTest;
 import annotations.TrivialTest;
-import io.opentracing.Scope;
-import io.opentracing.Span;
-import io.opentracing.Tracer;
+import brave.Span;
 import testhelpers.DTOhelpers;
 
 @ActiveProfiles("tier1")
@@ -50,6 +52,8 @@ import testhelpers.DTOhelpers;
 @AutoConfigureJsonTesters
 @SpringBootTest
 class SourceTier1Test extends DTOhelpers {
+    private static Logger log = LoggerFactory.getLogger(SourceTier1Test.class);
+
 
  //   import static org.assertj.core.api.Assertions.assertThat;
  //   import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -64,7 +68,7 @@ class SourceTier1Test extends DTOhelpers {
     private String instanceIndex;
 
     @Autowired
-    private Tracer opentracingTracer;
+    private TracingHelper tracingHelper;
 
     @Autowired
     private JacksonTester<MessageDTO> json;
@@ -118,14 +122,15 @@ class SourceTier1Test extends DTOhelpers {
         // prepare the test by simulate a message send
         String testOpName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
         testOpName = SourceTier1.class.getSimpleName() + "." + testOpName;
+        BOP opBOP = BOP.initInitially("testDomain", "testProcess", testOpName, "42", "5");
 
         // start Trace
-        Span bopSpan = opentracingTracer.buildSpan("testOperationFunc").start();
-        try (Scope bopScope = opentracingTracer.scopeManager().activate(bopSpan, true)) {
+        Span bopSpan = tracingHelper.tracer().nextSpan().name(testOpName);
+        try (SpanWithBOP spanWithBOP = tracingHelper.startSpan(bopSpan, opBOP, "testChunk")) {
+            BOP scopeBOP = spanWithBOP.bop();
 
             // construct test MessageDTO for test simulation
-            BOP opBOP = BOP.initInitially("testDomain", "testProcess", testOpName, "42", "5");
-            MessageDTO messageDTO = MessageDTO.create(opBOP, "testMessage", "initial Modification");
+            MessageDTO messageDTO = MessageDTO.create(scopeBOP, "testMessage", "initial Modification");
             messageDTO.seq = 42;
             Message<MessageDTO> messageToSend = MessageBuilder.withPayload(messageDTO)
                     // .setHeader("X-B3-TraceId", "testTrace").setHeader("X-B3-SpanId", "testSpan")
@@ -135,7 +140,8 @@ class SourceTier1Test extends DTOhelpers {
             tier1Input.send(messageToSend);
 
         } catch (Exception e) {
-            bopSpan.log(e.getMessage()); // Report any errors properly.
+            log.error(testOpName, e);
+            bopSpan.annotate(e.getMessage()); // Report any errors properly.
         } finally {
             // MDCLocal.endChunk(bopName);
             bopSpan.finish(); // Optionally close the Span.

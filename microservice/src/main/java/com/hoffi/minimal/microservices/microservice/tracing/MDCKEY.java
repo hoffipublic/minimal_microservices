@@ -1,4 +1,4 @@
-package com.hoffi.minimal.microservices.microservice.zipkinsleuthlogging;
+package com.hoffi.minimal.microservices.microservice.tracing;
 
 import com.hoffi.minimal.microservices.microservice.helpers.ImplementationHint;
 import org.springframework.cloud.sleuth.autoconfig.TraceEnvironmentPostProcessor;

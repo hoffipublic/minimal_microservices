@@ -20,7 +20,8 @@ class MessageDTOTest {
         BOP opBOP = BOP.initInitially("testDomain", "testProcess", testOpName, "42", "5");
 
         MessageDTO m1 = MessageDTO.create(opBOP);
-        assertEquals(Integer.valueOf(1), m1.seq);
+        m1.seq = 44;
+        assertEquals(Integer.valueOf(44), m1.seq);
         assertEquals("<initial>", m1.message);
         assertEquals("", m1.modifications);
         assertEquals("testProcess", m1.bops.getFirst().businessProcess);

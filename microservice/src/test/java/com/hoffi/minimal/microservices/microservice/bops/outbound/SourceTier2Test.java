@@ -14,6 +14,8 @@ import com.hoffi.minimal.microservices.microservice.tracing.SpanWithBOP;
 import com.hoffi.minimal.microservices.microservice.tracing.TracingHelper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,10 +36,11 @@ import org.springframework.test.context.TestPropertySource;
 import annotations.AppTest;
 import annotations.MessagingTest;
 import annotations.TrivialTest;
+import brave.Span;
 import testhelpers.DTOhelpers;
 
 @ActiveProfiles("tier2")
-@TestPropertySource(properties = { "spring.application.name=microservice_tier2", "app.businessLogic.tier=tier2",
+@TestPropertySource(properties = { "spring.application.name=microservice_tier2", "app.busines.tier=tier2",
         "eureka.client.enabled=false", "spring.cloud.config.enabled=false", "management.endpoints.enabled-by-default=false",
         "management.endpoints.web.exposure.exclude=\"*\"" })
 //@ImportAutoConfiguration(classes = { RefreshAutoConfiguration.class, TestSupportBinderAutoConfiguration.class,
@@ -50,11 +53,17 @@ import testhelpers.DTOhelpers;
 @AutoConfigureJsonTesters
 @SpringBootTest
 class SourceTier2Test extends DTOhelpers {
-    // import static org.assertj.core.api.Assertions.assertThat;
-    // import static org.junit.jupiter.api.Assertions.assertEquals;
-    // import static org.junit.jupiter.api.Assertions.fail;
+    private static Logger log = LoggerFactory.getLogger(SourceTier2Test.class);
 
-    @Value("${app.businessLogic.tier}")
+
+ //   import static org.assertj.core.api.Assertions.assertThat;
+ //   import static org.junit.jupiter.api.Assertions.assertEquals;
+ //   import static org.junit.jupiter.api.Assertions.fail;
+//    import org.springframework.integration.support.MessageBuilder;
+ //   import org.springframework.integration.channel.AbstractMessageChannel;
+
+
+    @Value("${app.busines.tier}")
     private String tier;
     @Value("${app.info.instance_index}")
     private String instanceIndex;
@@ -90,10 +99,10 @@ class SourceTier2Test extends DTOhelpers {
 
     @AppTest
     @MessagingTest
-    void minimalSendTest() {
+    void minimalSendTest() throws Exception {
         // construct test MessageDTO to be send
         String testOpName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
-        testOpName = SourceTier1.class.getSimpleName() + "." + testOpName;
+        testOpName = SourceTier2.class.getSimpleName() + "." + testOpName;
 
         BOP opBOP = BOP.initInitially("testDomain", "testProcess", testOpName, "42", "5");
         // Start a new Trace for BOP
@@ -114,15 +123,14 @@ class SourceTier2Test extends DTOhelpers {
         }
         
         @SuppressWarnings("unchecked")
-        Message<MessageDTO> receivedMessage =
-                (Message<MessageDTO>) messageCollector.forChannel(tier2Channels.tier2Output()).poll();
+        Message<String> receivedMessage =
+                (Message<String>) messageCollector.forChannel(tier2Channels.tier2Output()).poll();
 
-        // // extract receivedDTO from message and do assertions
-        // String payload = (String) receivedMessage.getPayload();
-        // MessageDTO receivedDTO = json.parse(payload).getObject();
-        MessageDTO receivedDTO = receivedMessage.getPayload();
+        // extract receivedDTO from message and do assertions
+        String payload = receivedMessage.getPayload();
+        MessageDTO receivedDTO = json.parse(payload).getObject();
 
-        assertEquals("testMessage", receivedDTO.message);
+        assertEquals("fourthThing Transformation", receivedDTO.message);
     }
     
     @AppTest
@@ -151,34 +159,54 @@ class SourceTier2Test extends DTOhelpers {
         };
         tier2Output.addInterceptor(assertionInterceptor);
 
-        // construct test MessageDTO to be send
+        // prepare the test by simulate a message send
         String testOpName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
         testOpName = SourceTier1.class.getSimpleName() + "." + testOpName;
-
         BOP opBOP = BOP.initInitially("testDomain", "testProcess", testOpName, "42", "5");
-        MessageDTO messageDTO = MessageDTO.create(opBOP, "testMessage", "initial Modification");
-        messageDTO.seq = 42;
 
-        // start Trace and  and send messageDTO
-        //customBaggage.startTrace("testBP", 42, "nextMS");
-        Message<MessageDTO> messageToSend = MessageBuilder.withPayload(messageDTO)
-                // .setHeader("X-B3-TraceId", "testTrace").setHeader("X-B3-SpanId", "testSpan")
-                .build();
-        tier2Input.send(messageToSend);
+        // ... start a completely new Trace
+        Span opSpan = tracingHelper.tracer().newTrace().name(testOpName);
+        try (SpanWithBOP opSpanWithBOP = tracingHelper.startTrace(opSpan, opBOP, "testChunk")) {
+            BOP scopeBOP = opSpanWithBOP.bop();
+
+            // construct test MessageDTO for test simulation
+            MessageDTO messageDTO = MessageDTO.create(scopeBOP, "testMessage", "initial Modification");
+            messageDTO.seq = 42;
+            Message<MessageDTO> messageToSend = MessageBuilder.withPayload(messageDTO)
+                    // .setHeader("X-B3-TraceId", "testTrace").setHeader("X-B3-SpanId", "testSpan")
+                    .build();
+
+            // simulate send
+            tier2Input.send(messageToSend);
+
+        } catch (Exception e) {
+            // as SpanWithBOP's ScopedBOP and SpanInScope was already autofinished
+            // we have to get back its Span into Scope (=active)
+            // chunk will be reported as it was before this try
+            tracingHelper.tracer().withSpanInScope(opSpan);
+            log.error(testOpName, e);
+            opSpan.annotate(e.getMessage()); // Report any errors properly.
+        } finally {
+            tracingHelper.finishSpanAndOperation(opSpan, opBOP); // trace will not be propagated to Zipkin/Jaeger unless explicitly finished
+        }
 
         // receive via assertionInterceptor's set messageAtomicReference
         messageWasCompletelyProcesses.await(500, TimeUnit.MILLISECONDS);
-        Message<?> receivedMessage = atomicReference.get();
+        Message<?> receivedMessage = null;
+        receivedMessage = atomicReference.get();
         assertThat(receivedMessage).isNotNull();
 
         // extract receivedDTO from message and do assertions
         String payload = (String) receivedMessage.getPayload();
         MessageDTO receivedDTO = json.parse(payload).getObject();
+
         // @formatter:off
         Assertions.assertAll(
             () -> assertEquals(Integer.valueOf(42), receivedDTO.seq),
-            () -> assertEquals("fourthBusinessLogicWithoutNewSpanTransformation", receivedDTO.message),
-            () -> assertEquals(" ==> tier2:i0:firstThing ==> tier2:i0:secondThingInANewSpan ==> tier2:i0:thirdThingInANewSpanAndNewDynamicBaggage ==> tier2:i0:fourthBusinessLogicWithoutNewSpan", receivedDTO.modifications)
+            () -> assertEquals("fourthThing Transformation", receivedDTO.message),
+        //  () -> assertEquals("initial Modification --> chunk busines in sourceTier1SendTo of testProcess/testDomain i0 --> chunk secondThingInNewSpan in sourceTier1SendTo of testProcess/testDomain i0 --> chunk busines in sourceTier1SendTo of testProcess/testDomain i0 --> chunk busines in sourceTier1SendTo of testProcess/testDomain i0 --> manualNewSpan", receivedDTO.modifications),
+            () -> assertEquals("initial Modification --> chunk default in sourceTier2SendTo of testProcess/testDomain i0 --> chunk secondThingInNewSpan in sourceTier2SendTo of testProcess/testDomain i0 --> chunk default in sourceTier2SendTo of testProcess/testDomain i0 --> chunk default in sourceTier2SendTo of testProcess/testDomain i0", receivedDTO.modifications),
+            () -> assertEquals("[chunk default in sourceTier2SendTo of testProcess/testDomain i0 (5)]", receivedDTO.bop.toString())
         );
         // @formatter:on
     }

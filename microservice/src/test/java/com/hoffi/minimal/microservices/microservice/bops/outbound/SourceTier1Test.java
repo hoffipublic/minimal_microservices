@@ -124,10 +124,10 @@ class SourceTier1Test extends DTOhelpers {
         testOpName = SourceTier1.class.getSimpleName() + "." + testOpName;
         BOP opBOP = BOP.initInitially("testDomain", "testProcess", testOpName, "42", "5");
 
-        // start Trace
-        Span bopSpan = tracingHelper.tracer().nextSpan().name(testOpName);
-        try (SpanWithBOP spanWithBOP = tracingHelper.startSpan(bopSpan, opBOP, "testChunk")) {
-            BOP scopeBOP = spanWithBOP.bop();
+        // ... start a completely new Trace
+        Span opSpan = tracingHelper.tracer().newTrace().name(testOpName);
+        try (SpanWithBOP opSpanWithBOP = tracingHelper.startTrace(opSpan, opBOP, "testChunk")) {
+            BOP scopeBOP = opSpanWithBOP.bop();
 
             // construct test MessageDTO for test simulation
             MessageDTO messageDTO = MessageDTO.create(scopeBOP, "testMessage", "initial Modification");
@@ -140,11 +140,14 @@ class SourceTier1Test extends DTOhelpers {
             tier1Input.send(messageToSend);
 
         } catch (Exception e) {
+            // as SpanWithBOP's ScopedBOP and SpanInScope was already autofinished
+            // we have to get back its Span into Scope (=active)
+            // chunk will be reported as it was before this try
+            tracingHelper.tracer().withSpanInScope(opSpan);
             log.error(testOpName, e);
-            bopSpan.annotate(e.getMessage()); // Report any errors properly.
+            opSpan.annotate(e.getMessage()); // Report any errors properly.
         } finally {
-            // MDCLocal.endChunk(bopName);
-            bopSpan.finish(); // Optionally close the Span.
+            tracingHelper.finishSpanAndOperation(opSpan, opBOP); // trace will not be propagated to Zipkin/Jaeger unless explicitly finished
         }
 
         // receive via assertionInterceptor's set messageAtomicReference
@@ -161,7 +164,8 @@ class SourceTier1Test extends DTOhelpers {
         Assertions.assertAll(
             () -> assertEquals(Integer.valueOf(42), receivedDTO.seq),
             () -> assertEquals("transformed by SourceTier1", receivedDTO.message),
-            () -> assertEquals("initial Modification --> chunk default in sourceTier1SendTo of testProcess/testDomain i0 --> chunk default in sourceTier1SendTo of testProcess/testDomain i0 --> chunk default in sourceTier1SendTo of testProcess/testDomain i0 --> chunk default in sourceTier1SendTo of testProcess/testDomain i0 --> manualNewSpan", receivedDTO.modifications)
+            () -> assertEquals("initial Modification --> chunk businessLogic in sourceTier1SendTo of testProcess/testDomain i0 --> chunk secondThingInNewSpan in sourceTier1SendTo of testProcess/testDomain i0 --> chunk businessLogic in sourceTier1SendTo of testProcess/testDomain i0 --> chunk businessLogic in sourceTier1SendTo of testProcess/testDomain i0 --> manualNewSpan", receivedDTO.modifications),
+            () -> assertEquals("[chunk default in sourceTier1SendTo of testProcess/testDomain i0 (5)]", receivedDTO.bop.toString())
         );
         // @formatter:on
     }

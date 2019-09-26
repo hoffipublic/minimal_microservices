@@ -46,6 +46,14 @@ import testhelpers.DTOhelpers;
 @SpringBootTest
 class SourceTest extends DTOhelpers {
 
+    // import static org.hamcrest.Matchers.is;
+    // import static org.junit.Assert.assertThat;
+    // import static org.junit.jupiter.api.Assertions.assertEquals;
+    // import static org.junit.jupiter.api.Assertions.fail;
+    // import org.springframework.integration.support.MessageBuilder;
+    // import org.springframework.integration.channel.AbstractMessageChannel;
+
+
     @Autowired
     private MessageCollector collector;
 
@@ -76,8 +84,9 @@ class SourceTest extends DTOhelpers {
         referenceBOP.bpIds.add("1");
         referenceBOP.businessDomain = "myCurrentBDomain";
         referenceBOP.businessProcess = "myBProcessName";
-        referenceBOP.instanceIndex = "0";
+        referenceBOP.instanceIndex = "i0";
         referenceBOP.operation = "timerMessageSource";
+        referenceBOP.chunk = "timerSend";
         MessageDTO referenceMessageDTO = DTOTestHelper.getPlainMessageDTO(); // as default constructor is private/protected
         referenceMessageDTO.seq = 1;
         referenceMessageDTO.bop = referenceBOP;
@@ -117,7 +126,8 @@ class SourceTest extends DTOhelpers {
             () -> assertEquals(referenceMessageDTO.bop.businessProcess, receivedDTO.bop.businessProcess, "businessProcess"),
             () -> assertEquals(referenceMessageDTO.bop.chunk, receivedDTO.bop.chunk, "chunk"),
             () -> assertEquals(referenceMessageDTO.bop.instanceIndex, receivedDTO.bop.instanceIndex, "instanceIndex"),
-            () -> assertEquals(referenceMessageDTO.bop.operation, receivedDTO.bop.operation, "operation")
+            () -> assertEquals(referenceMessageDTO.bop.operation, receivedDTO.bop.operation, "operation"),
+            () -> assertEquals(referenceMessageDTO.bop.chunk, receivedDTO.bop.chunk, "operation")
         );
         // @formatter:on
     }

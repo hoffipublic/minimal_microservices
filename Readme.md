@@ -1,7 +1,7 @@
 
 # minimal Message-Driven Microsevervice implementation with Tracing, Circuitbreaker and Sleuth logging meta-data
 
-
+implementation inside subproject-folder `./microservice/`
 
 
 

@@ -122,11 +122,11 @@ class SourceTier1Test extends DTOhelpers {
         // prepare the test by simulate a message send
         String testOpName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
         testOpName = SourceTier1.class.getSimpleName() + "." + testOpName;
-        BOP opBOP = BOP.initInitially("testDomain", "testProcess", testOpName, "42", "5");
+        BOP opBOP = BOP.initInitially(TH.REF_BOB_DOMAIN, TH.REF_BOB_PROCESS, TH.REF_BOB_OPERATION, TH.REF_BOB_INSTANCE_PLAIN, TH.REF_BOBID);
 
         // ... start a completely new Trace
         Span opSpan = tracingHelper.tracer().newTrace().name(testOpName);
-        try (SpanWithBOP opSpanWithBOP = tracingHelper.startTrace(opSpan, opBOP, "testChunk")) {
+        try (SpanWithBOP opSpanWithBOP = tracingHelper.startTrace(opSpan, opBOP, TH.REF_BOB_CHUNK)) {
             BOP scopeBOP = opSpanWithBOP.bop();
 
             // construct test MessageDTO for test simulation
@@ -164,8 +164,8 @@ class SourceTier1Test extends DTOhelpers {
         Assertions.assertAll(
             () -> assertEquals(Integer.valueOf(42), receivedDTO.seq),
             () -> assertEquals("transformed by SourceTier1", receivedDTO.message),
-            () -> assertEquals("initial Modification --> chunk businessLogic in sourceTier1SendTo of testProcess/testDomain i0 --> chunk secondThingInNewSpan in sourceTier1SendTo of testProcess/testDomain i0 --> chunk businessLogic in sourceTier1SendTo of testProcess/testDomain i0 --> chunk businessLogic in sourceTier1SendTo of testProcess/testDomain i0 --> manualNewSpan", receivedDTO.modifications),
-            () -> assertEquals("[chunk default in sourceTier1SendTo of testProcess/testDomain i0 (5)]", receivedDTO.bop.toString())
+            () -> assertEquals("initial Modification --> chunk businessLogic in sourceTier1SendTo of "+TH.REF_BOB_PROCESS+"/"+TH.REF_BOB_DOMAIN+" i0 --> chunk secondThingInNewSpan in sourceTier1SendTo of "+TH.REF_BOB_PROCESS+"/"+TH.REF_BOB_DOMAIN+" i0 --> chunk businessLogic in sourceTier1SendTo of "+TH.REF_BOB_PROCESS+"/"+TH.REF_BOB_DOMAIN+" i0 --> chunk businessLogic in sourceTier1SendTo of "+TH.REF_BOB_PROCESS+"/"+TH.REF_BOB_DOMAIN+" i0 --> manualNewSpan", receivedDTO.modifications),
+            () -> assertEquals("[chunk default in sourceTier1SendTo of "+TH.REF_BOB_PROCESS+"/"+TH.REF_BOB_DOMAIN+" i0 ("+TH.REF_BOBID+")]", receivedDTO.bop.toString())
         );
         // @formatter:on
     }

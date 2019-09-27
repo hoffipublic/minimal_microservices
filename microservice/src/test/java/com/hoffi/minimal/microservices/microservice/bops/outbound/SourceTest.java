@@ -7,8 +7,6 @@ import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import com.hoffi.minimal.microservices.microservice.bops.channels.SourceChannels;
-import com.hoffi.minimal.microservices.microservice.common.dto.BOP;
-import com.hoffi.minimal.microservices.microservice.common.dto.DTOTestHelper;
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
 import org.junit.jupiter.api.Assertions;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -79,20 +77,11 @@ class SourceTest extends DTOhelpers {
 
         BlockingQueue<Message<?>> messages = collector.forChannel(sourceChannels.sourceOutput());
 
-        // MessageDTO with BOP we use to compare the received message with
-        BOP referenceBOP = DTOTestHelper.getPlainBOP(); // as default constructor is private/protected
-        referenceBOP.bpIds.add("1");
-        referenceBOP.businessDomain = "myCurrentBDomain";
-        referenceBOP.businessProcess = "myBProcessName";
-        referenceBOP.instanceIndex = "i0";
-        referenceBOP.operation = "timerMessageSource";
-        referenceBOP.chunk = "timerSend";
-        MessageDTO referenceMessageDTO = DTOTestHelper.getPlainMessageDTO(); // as default constructor is private/protected
+        MessageDTO referenceMessageDTO = TH.referenceMessageDTO();
+        referenceMessageDTO.bop.setBopIds("1");
+        referenceMessageDTO.bop.chunk = TH.REF_BOB_CHUNK_TIMER;
         referenceMessageDTO.seq = 1;
-        referenceMessageDTO.bop = referenceBOP;
-        referenceMessageDTO.bops.add(referenceBOP);
-        referenceMessageDTO.message = "fromSource";
-        referenceMessageDTO.modifications = "";
+        referenceMessageDTO.message = TH.REF_MESSAGE_TIMER;
 
         // every receive for test below increases MessageDTO seq and BOP.bpId
 
@@ -124,12 +113,10 @@ class SourceTest extends DTOhelpers {
             () -> assertEquals("2", receivedDTO.bop.toStringBopIds(), "bpIDs"), // as it was the second call to timerMessageSource 
             () -> assertEquals(referenceMessageDTO.bop.businessDomain, receivedDTO.bop.businessDomain, "businessDomain"),
             () -> assertEquals(referenceMessageDTO.bop.businessProcess, receivedDTO.bop.businessProcess, "businessProcess"),
-            () -> assertEquals(referenceMessageDTO.bop.chunk, receivedDTO.bop.chunk, "chunk"),
             () -> assertEquals(referenceMessageDTO.bop.instanceIndex, receivedDTO.bop.instanceIndex, "instanceIndex"),
             () -> assertEquals(referenceMessageDTO.bop.operation, receivedDTO.bop.operation, "operation"),
-            () -> assertEquals(referenceMessageDTO.bop.chunk, receivedDTO.bop.chunk, "operation")
+            () -> assertEquals(referenceMessageDTO.bop.chunk, receivedDTO.bop.chunk, "chunk")
         );
         // @formatter:on
     }
-
 }

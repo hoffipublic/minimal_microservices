@@ -93,6 +93,12 @@ public class BOP extends DTO {
 
     // TODO also add to Baggage!!!
 
+    public LinkedHashSet<String> setBopIds(String ... bpId) {
+        LinkedHashSet<String> oldBopIds = this.bpIds;
+        this.bpIds = new LinkedHashSet<>(Arrays.asList(bpId));
+        return oldBopIds;
+    }
+
     public void addBopIds(String... bpId) {
         this.bpIds.addAll(Arrays.asList(bpId));
     }

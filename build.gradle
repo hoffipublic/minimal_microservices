@@ -8,6 +8,7 @@ buildscript {
         versions = new JsonSlurper().parseFile(rootProject.file('dependencies.json'), 'UTF-8')
         v = {  x -> versions.latest.default[x] } // helper function to acces slurped linked dependencies.json latest versions
         vp = { x -> versions.latest.plugin[x] } // helper function to acces slurped linked dependencies.json latest versions for gradle plugins
+        vs = { x -> versions.latest.snapshots[x] } // helper function to acces slurped linked dependencies.json latest versions for gradle plugins
     }
     repositories {
         mavenLocal()

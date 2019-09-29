@@ -1,10 +1,9 @@
 package com.hoffi.minimal.microservices.microservice.bops.inbound;
 
 import com.hoffi.minimal.microservices.microservice.bops.channels.SinkChannels;
-import com.hoffi.minimal.microservices.microservice.common.dto.BOP;
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
-import com.hoffi.minimal.microservices.microservice.tracing.ScopedBOP;
-import com.hoffi.minimal.microservices.microservice.tracing.SpanWithBOP;
+import com.hoffi.minimal.microservices.microservice.tracing.ChunkScoped;
+import com.hoffi.minimal.microservices.microservice.tracing.SpanScoped;
 import com.hoffi.minimal.microservices.microservice.tracing.TracingHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,41 +23,47 @@ public class Sink {
     @Value("${app.info.instance_index}")
     private String instanceIndex;
 
+    /** for encapsulating as much tracer specifics as possible
+     * to keep the business logic (imports) as clean as possible from implementation specif tracing details */
     @Autowired
     private TracingHelper tracingHelper;
     
     @StreamListener(SinkChannels.INPUT)
     public void sinked(MessageDTO payload, Message<MessageDTO> wholeMessage) throws Exception {
         String opName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
-        BOP opBOP = tracingHelper.initBOPfromUpstream(opName, instanceIndex);
-        log.info("receive: continue Trace from upstream: {}", opBOP);
+        // setting local baggage keys, tags and annotations on the incoming Span
+        tracingHelper.continueTraceFromUpstream(opName, instanceIndex);
+        log.info("[{} in {}] receive: continue Trace from upstream ...", payload.seq, instanceIndex);
 
-        Span opSpan = tracingHelper.tracer().nextSpan().name(opName);
-        try (SpanWithBOP opSpanWithBOP = tracingHelper.continueTraceFromUpstream(opSpan, opBOP, "receive")) {
-            BOP spanBOP = opSpanWithBOP.bop();
-            log.info("receive: continue Trace from upstream: {}", spanBOP);
+        String opSpanName = opName+"Span";
+        Span opSpan = tracingHelper.nextSpan(opSpanName);
+        try (SpanScoped spanScoped = tracingHelper.startSpan(opSpan, opSpanName)) {
+            log.info("[{} in {}] final receive: in manualOpSpan {} received '{}'", payload.seq, instanceIndex, opSpanName, payload);
 
             // explicit call just to show how to alter the current chunkName
-            String chunkName = "finallyInUnscpedChunk";
-            try(ScopedBOP scopedBOP = tracingHelper.startUnscopedChunk(opBOP, chunkName)) {
-                log.info("[{}] FINAL for: '{}'", instanceIndex, payload);
+            String chunkName = "ThisIsTheEnd";
+            try(ChunkScoped chunkScoped = tracingHelper.startChunk(chunkName)) {
+                log.info("[{} in {}] receive: FINAL for '{}'", payload.seq, instanceIndex, payload);
             } catch (Throwable t) {
+                // SpanInScope of Span already has finished at this point
+                // also (local) Baggage of parent Span was restored and put into MDC
+                tracingHelper.tracer().withSpanInScope(opSpan);
                 log.error("Exception on message transform: {}", t);
-                opSpan.annotate(t.getMessage()); // Report any errors properly.
+                tracingHelper.reportException(opSpan, t);; // Report any errors properly.
             }
 
-            log.info("TRACE END ... finishing trace in {}", opName);
+            log.info("[{} in {}] receive: TRACE END ... finishing trace in {}", payload.seq, instanceIndex, "final receive");
         } catch (Throwable t) {
-            // as SpanWithBOP's ScopedBOP and SpanInScope was already autofinished
-            // we have to get back its Span into Scope (=active)
-            // chunk will be reported as it was before this try
+            // SpanInScope of Span already has finished at this point
+            // also (local) Baggage of parent Span was restored and put into MDC
             tracingHelper.tracer().withSpanInScope(opSpan);
-            log.error(opName, t);
+            log.error(opSpanName, t);
             // Report any errors properly.
-            opSpan.annotate(String.format("Exception: in operation: %s parentChunk: %s Exception: %s", opBOP.operation, opBOP.chunk, t.getMessage()));
+            tracingHelper.reportException(opSpan, t);
         } finally {
-            tracingHelper.finishSpanAndTrace(opSpan, opBOP); // trace will not be propagated to Zipkin/Jaeger unless explicitly finished
-            log.info("completely finished operation and trace in {}", opName);
+            log.info("[{} in {}] receive: finishing receive operation's span  {} ...", payload.seq, instanceIndex, opSpanName);
+            tracingHelper.finishSpanAndTrace(opSpan, opSpanName); // trace will not be propagated to Zipkin/Jaeger unless explicitly finished
+            log.info("[{} in {}] receive: completely finished operation and trace in {}", payload.seq, instanceIndex, opName);
         }
     }
 }

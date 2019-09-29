@@ -2,10 +2,9 @@ package com.hoffi.minimal.microservices.microservice.bops.outbound;
 
 import com.hoffi.minimal.microservices.microservice.bops.channels.Tier1Channels;
 import com.hoffi.minimal.microservices.microservice.businesslogic.BusinessLogic;
-import com.hoffi.minimal.microservices.microservice.common.dto.BOP;
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
 import com.hoffi.minimal.microservices.microservice.helpers.AverageDurationHelper;
-import com.hoffi.minimal.microservices.microservice.tracing.SpanWithBOP;
+import com.hoffi.minimal.microservices.microservice.tracing.SpanScoped;
 import com.hoffi.minimal.microservices.microservice.tracing.TracingHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,6 +31,8 @@ public class SourceTier1 {
     @Autowired
     private AverageDurationHelper averageHelper;
 
+    /** for encapsulating as much tracer specifics as possible
+     * to keep the business logic (imports) as clean as possible from implementation specif tracing details */
     @Autowired
     private TracingHelper tracingHelper;
 
@@ -74,93 +75,96 @@ public class SourceTier1 {
     // @formatter:on
     public void sourceTier1SendTo(MessageDTO payload) throws Exception {
         long startTime = System.currentTimeMillis();
-        // wrong place to log as neither the nested Span has started, nor the BOP was initialized
-        // log.info("transform beginning for {}", payload);
         String opName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
-        BOP opBOP = tracingHelper.initBOPfromUpstream(opName, instanceIndex);
-        log.info("send: continue Trace from upstream: {}", opBOP);
+        // setting local baggage keys, tags and annotations on the incoming Span
+        tracingHelper.continueTraceFromUpstream(opName, instanceIndex);
+        log.info("[{} in {}] send: continue Trace from upstream: {}", payload.seq, instanceIndex, opName);
 
-        Span opSpan = tracingHelper.tracer().nextSpan().name(opName);
-        try (SpanWithBOP opSpanWithBOP = tracingHelper.continueTraceFromUpstream(opSpan, opBOP, "send")) {
-            BOP spanBOP = opSpanWithBOP.bop();
-            log.info("send in Span: {}", spanBOP);
+        // just for fun, we add an outer Span
+        String opSpanName = opName+"Span";
+        Span outerSpan = tracingHelper.nextSpan(opSpanName);
+        try (SpanScoped spanScoped = tracingHelper.startSpan(outerSpan, opSpanName)) {
+            log.info("[{} in {}] send: in manualOpSpan {}", payload.seq, instanceIndex, opSpanName);
 
             String chunkNameBusLogic = "businessLogic";
-            Span businessLogicSpan = tracingHelper.tracer().nextSpan().name(opName);
-            try (SpanWithBOP spanWithBOP_BusinessLogic = tracingHelper.startSpan(businessLogicSpan, opBOP, chunkNameBusLogic)) {
-                log.info("transform within {} beginning for {}", chunkNameBusLogic, payload);
-                BOP scopeBOP = spanWithBOP_BusinessLogic.bop();
+            Span businessLogicSpan = tracingHelper.nextSpan(chunkNameBusLogic);
+            try (SpanScoped businessLogicSpanScoped = tracingHelper.startSpan(businessLogicSpan, chunkNameBusLogic)) {
+                log.info("[{} in {}] send: transform within new span {} beginning for {}", payload.seq, instanceIndex, chunkNameBusLogic, payload);
 
                 MessageDTO transformedPayload;
-                transformedPayload = businessLogic.firstThingWithinSameSpan(spanWithBOP_BusinessLogic, payload);
-                log.info("inbetween firstThing and secondThing");
-                transformedPayload = businessLogic.secondThingInNewSpan(spanWithBOP_BusinessLogic, transformedPayload);
-                log.info("inbetween secondThink and thirdThing");
-                transformedPayload = businessLogic.thirdThingWithNewDynamicBaggage(spanWithBOP_BusinessLogic, transformedPayload, "sink2only");
-                log.info("inbetween thirdThing and fourthThing");
-                transformedPayload = businessLogic.fourthThingWithScopedBOP(spanWithBOP_BusinessLogic, transformedPayload);
+                transformedPayload = businessLogic.firstThingWithinSameSpan(payload);
+                log.info("[{} in {}] send: inbetween firstThing and secondThing", payload.seq, instanceIndex);
+                transformedPayload = businessLogic.secondThingInNewSpan(transformedPayload);
+                log.info("[{} in {}] send: inbetween secondThink and thirdThing", payload.seq, instanceIndex);
+                transformedPayload = businessLogic.thirdThingWithNewDynamicBaggage(transformedPayload, "sink2only");
+                log.info("[{} in {}] send: inbetween thirdThing and fourthThing", payload.seq, instanceIndex);
+                transformedPayload = businessLogic.fourthThingWithScopedBOP(transformedPayload);
                 
-                log.info("inbetween fourthThing and notWorkingInner");
+                log.info("[{} in {}] send: inbetween fourthThing and notWorkingInner", payload.seq, instanceIndex);
                 notWorkingInnerThingInANewSpanAndNewDynamicBaggage(transformedPayload);
-                log.info("inbetween notWorkingInner and manualSpan");
+                log.info("[{} in {}] send: inbetween notWorkingInner and manualSpan", payload.seq, instanceIndex);
 
                 String newInnerChunk = "manualSpan";
-                Span innerChunkSpan = tracingHelper.tracer().nextSpan().name(newInnerChunk);
-                try (SpanWithBOP spanWithBOP_innerManual = tracingHelper.startSpan(innerChunkSpan, spanWithBOP_BusinessLogic.bop(), newInnerChunk)) {
-                    log.info("transform manualNewSpan {} start...", newInnerChunk);
+                Span innerChunkSpan = tracingHelper.nextSpan(newInnerChunk);
+                try (SpanScoped manualSpanSpanScoped = tracingHelper.startSpan(innerChunkSpan, newInnerChunk)) {
+                    log.info("[{} in {}] send: transform within manualNewSpan {} start...", payload.seq, instanceIndex, newInnerChunk);
 
                     MessageDTO beforePayload = transformedPayload;
-                    transformedPayload = beforePayload.transform(opBOP, "transformed by SourceTier1", "manualNewSpan");
-                    log.info("[{}]Transformed from '{}' to '{}'", instanceIndex, beforePayload, transformedPayload);
+                    transformedPayload = beforePayload.transform("transformed by " + newInnerChunk, newInnerChunk);
+                    log.info("[{} in {}] send: transformed from to '{}'", payload.seq, instanceIndex, transformedPayload);
 
-                    tracingHelper.alterChunk(spanWithBOP_innerManual, "sendWithinManualSpan");
+                    tracingHelper.alterChunk(spanScoped, "sendWithinManualSpan");
 
-                    log.info("send to next tier within manualNewSpan but new chunk");
+                    log.info("[{} in {}] send: send to next tier within manualNewSpan but new chunk: sendWithinManualSpan", payload.seq, instanceIndex);
                     tier1OutputMessageChannel.send(MessageBuilder.withPayload(transformedPayload).build());
+                    log.info("[{} in {}] send: finishing span {} (after async downstream send) ...", payload.seq, instanceIndex, newInnerChunk);
                 } catch (Throwable t) {
-                    // as SpanWithBOP's ScopedBOP and SpanInScope was already autofinished
-                    // we have to get back its Span into Scope (=active)
-                    // chunk will be reported as it was before this try
+                    // SpanInScope of Span already has finished at this point
+                    // also (local) Baggage of parent Span was restored and put into MDC
                     tracingHelper.tracer().withSpanInScope(innerChunkSpan);
                     log.error("Exception on message transform in inner manual Span: {}", t);
-                    innerChunkSpan.annotate(t.getMessage()); // Report any errors properly.
+                    tracingHelper.reportException(innerChunkSpan, t); // Report any errors properly.
                     throw t;
                 } finally {
-                    tracingHelper.finishSpan(innerChunkSpan, scopeBOP);
+                    log.info("[{} in {}] send: finishing span {} ==> now finishing {} ...", payload.seq, instanceIndex, newInnerChunk, chunkNameBusLogic);
+                    tracingHelper.finishSpan(innerChunkSpan);
                 }
-                log.info("===after {}", newInnerChunk);
+
+                log.info("[{} in {}] send: after span {}", payload.seq, instanceIndex, newInnerChunk);
             } catch (Exception e) {
-                // as SpanWithBOP's ScopedBOP and SpanInScope was already autofinished
-                // we have to get back its Span into Scope (=active)
-                // chunk will be reported as it was before this try
+                // SpanInScope of Span already has finished at this point
+                // also (local) Baggage of parent Span was restored and put into MDC
                 tracingHelper.tracer().withSpanInScope(businessLogicSpan);
                 log.error("Exception on message transform: {}", e);
-                businessLogicSpan.annotate(e.getMessage()); // Report any errors properly.
+                tracingHelper.reportException(businessLogicSpan, e); // Report any errors properly.
                 throw e;
             } finally {
-                tracingHelper.finishSpan(businessLogicSpan, spanBOP);
+                log.info("[{} in {}] send: finishing span {} ...", payload.seq, instanceIndex, chunkNameBusLogic);
+                tracingHelper.finishSpan(businessLogicSpan);
             }
 
-            log.info("finishing operation {} ...", opName);
+            log.info("[{} in {}] send: finished span {} ==> now finishing {} ...", payload.seq, instanceIndex, chunkNameBusLogic, opSpanName);
         } catch (Throwable t) {
-            // as SpanWithBOP's ScopedBOP and SpanInScope was already autofinished
-            // we have to get back its Span into Scope (=active)
-            // chunk will be reported as it was before this try
-            tracingHelper.tracer().withSpanInScope(opSpan);
+            // SpanInScope of Span already has finished at this point
+            // also (local) Baggage of parent Span was restored and put into MDC
+            tracingHelper.tracer().withSpanInScope(outerSpan);
             log.error(opName, t);
             // Report any errors properly.
-            opSpan.annotate(String.format("Exception: in operation: %s parentChunk: %s Exception: %s", opBOP.operation, opBOP.chunk, t.getMessage()));
+            tracingHelper.reportException(outerSpan, t);
         } finally {
             long duration = System.currentTimeMillis() - startTime;
             averageHelper.newAverage(tier, duration);
-            log.info("transform ended and took {} ms overall, {}", duration, averageHelper.toString(tier));
-            tracingHelper.finishSpanAndOperation(opSpan, opBOP); // trace will not be propagated to Zipkin/Jaeger unless explicitly finished
+            log.info("[{} in {}] send: transform ended and took {} ms overall, {}", payload.seq, instanceIndex, duration, averageHelper.toString(tier));
+            log.info("[{} in {}] send: finishing send operation's span  {} ...", payload.seq, instanceIndex, opSpanName);
+            // as for this demo this method was called synchonously and NOT VIA MESSAGING
+            // we shouldn't finish the continueTraceFromUpstream Span,
+            // as it will continue in the inbound.SinkTier1 receiver ...
+            // tracingHelper.finishSpanAndOperation(tracingHelper.activeSpan(), opName); // trace will not be propagated to Zipkin/Jaeger unless explicitly finished
 
-            log.info("finished operation: {}", opName);
+            log.info("[{} in {}] send: finished span of send operation: {}", payload.seq, instanceIndex, opName);
         }
 
-        log.info("========AFTER AFTER 'businessLogic' chunk has finished===========");
-
+        log.info("[{} in {}] send: ========AFTER AFTER 'businessLogic' chunk has finished===========", payload.seq, instanceIndex);
     }
 
     // @NewSpan("SourceTier1SendToFallback")

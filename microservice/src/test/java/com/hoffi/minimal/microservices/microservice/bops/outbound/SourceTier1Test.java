@@ -8,9 +8,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import com.hoffi.minimal.microservices.microservice.bops.channels.Tier1Channels;
-import com.hoffi.minimal.microservices.microservice.common.dto.BOP;
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
-import com.hoffi.minimal.microservices.microservice.tracing.SpanWithBOP;
+import com.hoffi.minimal.microservices.microservice.tracing.SpanScoped;
 import com.hoffi.minimal.microservices.microservice.tracing.TracingHelper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
@@ -122,16 +121,14 @@ class SourceTier1Test extends DTOhelpers {
         // prepare the test by simulate a message send
         String testOpName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
         testOpName = SourceTier1.class.getSimpleName() + "." + testOpName;
-        BOP opBOP = BOP.initInitially(TH.REF_BOB_DOMAIN, TH.REF_BOB_PROCESS, TH.REF_BOB_OPERATION, TH.REF_BOB_INSTANCE_PLAIN, TH.REF_BOBID);
 
         // ... start a completely new Trace
-        Span opSpan = tracingHelper.tracer().newTrace().name(testOpName);
-        try (SpanWithBOP opSpanWithBOP = tracingHelper.startTrace(opSpan, opBOP, TH.REF_BOB_CHUNK)) {
-            BOP scopeBOP = opSpanWithBOP.bop();
+        Span opSpan = tracingHelper.newTrace(testOpName);
+        try (SpanScoped spanScoped = tracingHelper.startTrace(opSpan, TH.REF_BOB_DOMAIN, TH.REF_BOB_PROCESS, TH.REF_BOBID, testOpName, instanceIndex)) {
 
             // construct test MessageDTO for test simulation
-            MessageDTO messageDTO = MessageDTO.create(scopeBOP, "testMessage", "initial Modification");
-            messageDTO.seq = 42;
+            MessageDTO messageDTO = MessageDTO.create("testMessage", "initial Modification");
+            messageDTO.seq = "42";
             Message<MessageDTO> messageToSend = MessageBuilder.withPayload(messageDTO)
                     // .setHeader("X-B3-TraceId", "testTrace").setHeader("X-B3-SpanId", "testSpan")
                     .build();
@@ -147,7 +144,7 @@ class SourceTier1Test extends DTOhelpers {
             log.error(testOpName, e);
             opSpan.annotate(e.getMessage()); // Report any errors properly.
         } finally {
-            tracingHelper.finishSpanAndOperation(opSpan, opBOP); // trace will not be propagated to Zipkin/Jaeger unless explicitly finished
+            tracingHelper.finishSpanAndOperation(opSpan, testOpName); // trace will not be propagated to Zipkin/Jaeger unless explicitly finished
         }
 
         // receive via assertionInterceptor's set messageAtomicReference
@@ -162,10 +159,9 @@ class SourceTier1Test extends DTOhelpers {
 
         // @formatter:off
         Assertions.assertAll(
-            () -> assertEquals(Integer.valueOf(42), receivedDTO.seq),
-            () -> assertEquals("transformed by SourceTier1", receivedDTO.message),
-            () -> assertEquals("initial Modification --> chunk businessLogic in sourceTier1SendTo of "+TH.REF_BOB_PROCESS+"/"+TH.REF_BOB_DOMAIN+" i0 --> chunk secondThingInNewSpan in sourceTier1SendTo of "+TH.REF_BOB_PROCESS+"/"+TH.REF_BOB_DOMAIN+" i0 --> chunk businessLogic in sourceTier1SendTo of "+TH.REF_BOB_PROCESS+"/"+TH.REF_BOB_DOMAIN+" i0 --> chunk businessLogic in sourceTier1SendTo of "+TH.REF_BOB_PROCESS+"/"+TH.REF_BOB_DOMAIN+" i0 --> manualNewSpan", receivedDTO.modifications),
-            () -> assertEquals("[chunk default in sourceTier1SendTo of "+TH.REF_BOB_PROCESS+"/"+TH.REF_BOB_DOMAIN+" i0 ("+TH.REF_BOBID+")]", receivedDTO.bop.toString())
+            () -> assertEquals("42", receivedDTO.seq),
+            () -> assertEquals("transformed by manualSpan", receivedDTO.message),
+            () -> assertEquals("initial Modification --> firstThingWithinSameSpan --> secondThingInNewSpan --> thirdThingWithNewDynamicBaggage --> fourthThingWithScopedBOP --> manualSpan", receivedDTO.modifications)
         );
         // @formatter:on
     }

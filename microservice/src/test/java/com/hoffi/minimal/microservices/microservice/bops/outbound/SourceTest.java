@@ -78,9 +78,7 @@ class SourceTest extends DTOhelpers {
         BlockingQueue<Message<?>> messages = collector.forChannel(sourceChannels.sourceOutput());
 
         MessageDTO referenceMessageDTO = TH.referenceMessageDTO();
-        referenceMessageDTO.bop.setBopIds("1");
-        referenceMessageDTO.bop.chunk = TH.REF_BOB_CHUNK_TIMER;
-        referenceMessageDTO.seq = 1;
+        referenceMessageDTO.seq = "1";
         referenceMessageDTO.message = TH.REF_MESSAGE_TIMER;
 
         // every receive for test below increases MessageDTO seq and BOP.bpId
@@ -107,15 +105,9 @@ class SourceTest extends DTOhelpers {
 
         // @formatter:off
         Assertions.assertAll(
-            () -> assertEquals(Integer.valueOf(2), receivedDTO.seq, "seq"),
+            () -> assertEquals("2", receivedDTO.seq, "seq"),
             () -> assertEquals(referenceMessageDTO.message, receivedDTO.message, "message"),
-            () -> assertEquals(referenceMessageDTO.modifications, receivedDTO.modifications, "modifications"),
-            () -> assertEquals("2", receivedDTO.bop.toStringBopIds(), "bpIDs"), // as it was the second call to timerMessageSource 
-            () -> assertEquals(referenceMessageDTO.bop.businessDomain, receivedDTO.bop.businessDomain, "businessDomain"),
-            () -> assertEquals(referenceMessageDTO.bop.businessProcess, receivedDTO.bop.businessProcess, "businessProcess"),
-            () -> assertEquals(referenceMessageDTO.bop.instanceIndex, receivedDTO.bop.instanceIndex, "instanceIndex"),
-            () -> assertEquals(referenceMessageDTO.bop.operation, receivedDTO.bop.operation, "operation"),
-            () -> assertEquals(referenceMessageDTO.bop.chunk, receivedDTO.bop.chunk, "chunk")
+            () -> assertEquals(referenceMessageDTO.modifications, receivedDTO.modifications, "modifications")
         );
         // @formatter:on
     }

@@ -8,10 +8,10 @@ public abstract class DTOhelpers {
     // ========================================================================
     // ====   Test Helpers   ==================================================
     // ========================================================================
-    public static FeatureMatcher<MessageDTO, Integer> id(Matcher<Integer> matcher) {
-        return new FeatureMatcher<MessageDTO, Integer>(matcher, "has an id of", " is id") {
+    public static FeatureMatcher<MessageDTO, String> id(Matcher<String> matcher) {
+        return new FeatureMatcher<MessageDTO, String>(matcher, "has an id of", " is id") {
             @Override
-            protected Integer featureValueOf(MessageDTO actual) {
+            protected String featureValueOf(MessageDTO actual) {
                 return actual.seq;
             }
         };

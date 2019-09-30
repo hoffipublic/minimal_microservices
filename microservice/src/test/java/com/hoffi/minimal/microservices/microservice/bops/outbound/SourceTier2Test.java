@@ -8,9 +8,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import com.hoffi.minimal.microservices.microservice.bops.channels.Tier2Channels;
-import com.hoffi.minimal.microservices.microservice.common.dto.BOP;
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
-import com.hoffi.minimal.microservices.microservice.tracing.SpanWithBOP;
+import com.hoffi.minimal.microservices.microservice.tracing.SpanScoped;
 import com.hoffi.minimal.microservices.microservice.tracing.TracingHelper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
@@ -104,14 +103,12 @@ class SourceTier2Test extends DTOhelpers {
         String testOpName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
         testOpName = SourceTier2.class.getSimpleName() + "." + testOpName;
 
-        BOP opBOP = BOP.initInitially("testDomain", "testProcess", testOpName, "42", "5");
         // Start a new Trace for BOP
-        brave.Span bopSpan = tracingHelper.tracer().nextSpan().name(testOpName);
-        try (SpanWithBOP spanWithBOP = tracingHelper.startSpan(bopSpan, opBOP, "minimalTest")) {
-            BOP scopeBOP = spanWithBOP.bop();
+        brave.Span bopSpan = tracingHelper.nextSpan(testOpName);
+        try (SpanScoped spanScoped = tracingHelper.startSpan(bopSpan, testOpName)) {
 
-            MessageDTO messageDTO = MessageDTO.create(scopeBOP, "testMessage", "initial Modification");
-            messageDTO.seq = 42;
+            MessageDTO messageDTO = MessageDTO.create("testMessage", "initial Modification");
+            messageDTO.seq = "42";
 
             Message<MessageDTO> messageToSend = MessageBuilder.withPayload(messageDTO)
             // .setHeader("X-B3-TraceId", "testTrace").setHeader("X-B3-SpanId", "testSpan")
@@ -162,16 +159,14 @@ class SourceTier2Test extends DTOhelpers {
         // prepare the test by simulate a message send
         String testOpName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
         testOpName = SourceTier1.class.getSimpleName() + "." + testOpName;
-        BOP opBOP = BOP.initInitially("testDomain", "testProcess", testOpName, "42", "5");
 
         // ... start a completely new Trace
-        Span opSpan = tracingHelper.tracer().newTrace().name(testOpName);
-        try (SpanWithBOP opSpanWithBOP = tracingHelper.startTrace(opSpan, opBOP, "testChunk")) {
-            BOP scopeBOP = opSpanWithBOP.bop();
+        Span opSpan = tracingHelper.newTrace(testOpName);
+        try (SpanScoped spanScoped = tracingHelper.startTrace(opSpan, TH.REF_BOB_DOMAIN, TH.REF_BOB_PROCESS, TH.REF_BOBID, testOpName, instanceIndex)) {
 
             // construct test MessageDTO for test simulation
-            MessageDTO messageDTO = MessageDTO.create(scopeBOP, "testMessage", "initial Modification");
-            messageDTO.seq = 42;
+            MessageDTO messageDTO = MessageDTO.create("testMessage", "initial Modification");
+            messageDTO.seq = "42";
             Message<MessageDTO> messageToSend = MessageBuilder.withPayload(messageDTO)
                     // .setHeader("X-B3-TraceId", "testTrace").setHeader("X-B3-SpanId", "testSpan")
                     .build();
@@ -187,7 +182,7 @@ class SourceTier2Test extends DTOhelpers {
             log.error(testOpName, e);
             opSpan.annotate(e.getMessage()); // Report any errors properly.
         } finally {
-            tracingHelper.finishSpanAndOperation(opSpan, opBOP); // trace will not be propagated to Zipkin/Jaeger unless explicitly finished
+            tracingHelper.finishSpanAndOperation(opSpan, testOpName); // trace will not be propagated to Zipkin/Jaeger unless explicitly finished
         }
 
         // receive via assertionInterceptor's set messageAtomicReference
@@ -202,11 +197,10 @@ class SourceTier2Test extends DTOhelpers {
 
         // @formatter:off
         Assertions.assertAll(
-            () -> assertEquals(Integer.valueOf(42), receivedDTO.seq),
+            () -> assertEquals("42", receivedDTO.seq),
             () -> assertEquals("fourthThing Transformation", receivedDTO.message),
         //  () -> assertEquals("initial Modification --> chunk busines in sourceTier1SendTo of testProcess/testDomain i0 --> chunk secondThingInNewSpan in sourceTier1SendTo of testProcess/testDomain i0 --> chunk busines in sourceTier1SendTo of testProcess/testDomain i0 --> chunk busines in sourceTier1SendTo of testProcess/testDomain i0 --> manualNewSpan", receivedDTO.modifications),
-            () -> assertEquals("initial Modification --> chunk default in sourceTier2SendTo of testProcess/testDomain i0 --> chunk secondThingInNewSpan in sourceTier2SendTo of testProcess/testDomain i0 --> chunk default in sourceTier2SendTo of testProcess/testDomain i0 --> chunk default in sourceTier2SendTo of testProcess/testDomain i0", receivedDTO.modifications),
-            () -> assertEquals("[chunk default in sourceTier2SendTo of testProcess/testDomain i0 (5)]", receivedDTO.bop.toString())
+            () -> assertEquals("initial Modification --> firstThingWithinSameSpan --> secondThingInNewSpan --> thirdThingWithNewDynamicBaggage --> fourthThingWithScopedBOP", receivedDTO.modifications)
         );
         // @formatter:on
     }

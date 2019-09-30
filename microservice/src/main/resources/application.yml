@@ -101,6 +101,15 @@ my:
   test:
     property: "from application.yml"
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  endpoint:
+    health:
+      show-details: always
+
 ---
 
 spring:

@@ -31,6 +31,8 @@ dependencies {
 	implementation 'org.springframework.cloud:spring-cloud-starter-sleuth'+":${vs('springSleuthVersion')}" // zipkin'
 	implementation 'org.springframework.cloud:spring-cloud-starter-zipkin'+":${vs('springSleuthVersion')}" // zipkin'
 
+    runtime "io.micrometer:micrometer-registry-prometheus:${v('micrometerRegistryPrometheusVersion')}"
+
     // implementation "io.zipkin.reporter2:zipkin-sender-amqp-client:2.10.3"
     implementation "io.zipkin.reporter2:zipkin-reporter:2.10.3"
 

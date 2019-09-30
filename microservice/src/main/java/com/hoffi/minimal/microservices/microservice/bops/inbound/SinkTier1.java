@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.messaging.Message;
 import org.springframework.stereotype.Component;
 import brave.Span;
+import io.micrometer.core.annotation.Timed;
 
 @Profile({"tier1"})
 @Component
@@ -31,7 +32,7 @@ public class SinkTier1 {
     @Autowired
     private SourceTier1 sourceTier1;
 
-    /** instrumentation has started a new Span for us */
+    @Timed("sinkTier1StreamListenerMetrics")
     @StreamListener(Tier1Channels.INPUT)
     public void sinkTier1StreamListener(MessageDTO payload, Message<MessageDTO> wholeMessage) throws Exception {
         String opName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name

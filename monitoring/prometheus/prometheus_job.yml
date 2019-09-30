@@ -1,0 +1,7 @@
+scrape_configs:
+- job_name: 'minimal_spring_prometheus'
+  metrics_path: /actuator/prometheus
+  scrape_interval: 5s
+  static_configs:
+  - targets: ['192.168.0.2:8080']
+

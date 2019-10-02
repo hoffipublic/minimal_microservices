@@ -4,6 +4,7 @@ import com.hoffi.minimal.microservices.microservice.bops.channels.Tier1Channels;
 import com.hoffi.minimal.microservices.microservice.businesslogic.BusinessLogic;
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
 import com.hoffi.minimal.microservices.microservice.helpers.AverageDurationHelper;
+import com.hoffi.minimal.microservices.microservice.monitoring.annotations.Monitored;
 import com.hoffi.minimal.microservices.microservice.tracing.SpanScoped;
 import com.hoffi.minimal.microservices.microservice.tracing.TracingHelper;
 import org.slf4j.Logger;
@@ -64,6 +65,7 @@ public class SourceTier1 {
     // publishing to an exchange with no routable queue will never get an exception (only an async
     // return callback)
     // @formatter:off
+    @Monitored("sink1-Send")
     @SendTo(Tier1Channels.OUTPUT) // redundant here, as we directly use the injected Message Channel
     // @HystrixCommand(fallbackMethod = "fallbackTimerMessageSource", commandProperties = {
     //         @HystrixProperty(name = "metrics.rollingStats.timeInMilliseconds", value = "20000"), // time that the circuitbreakes "remembers" calls to this circuitbreaker

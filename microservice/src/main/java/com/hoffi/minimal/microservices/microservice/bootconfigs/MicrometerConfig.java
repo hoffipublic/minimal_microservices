@@ -12,12 +12,13 @@ public class MicrometerConfig {
 
     @Value("${spring.application.name}")
     String appName;
-    
+
     @Bean
     MeterRegistryCustomizer<MeterRegistry> metricsCommonTags() {
-        return registry -> registry.config().commonTags("app.name", appName);
+        return registry -> registry.config().commonTags("app.name", appName, "env", "dev");
     }
 
+    /** for being able to add the @Timed annotation to methods */
     @Bean
     TimedAspect timedAspect(MeterRegistry registry) {
         return new TimedAspect(registry);

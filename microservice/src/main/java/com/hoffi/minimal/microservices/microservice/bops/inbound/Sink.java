@@ -2,6 +2,7 @@ package com.hoffi.minimal.microservices.microservice.bops.inbound;
 
 import com.hoffi.minimal.microservices.microservice.bops.channels.SinkChannels;
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
+import com.hoffi.minimal.microservices.microservice.monitoring.annotations.Monitored;
 import com.hoffi.minimal.microservices.microservice.tracing.ChunkScoped;
 import com.hoffi.minimal.microservices.microservice.tracing.SpanScoped;
 import com.hoffi.minimal.microservices.microservice.tracing.TracingHelper;
@@ -28,6 +29,7 @@ public class Sink {
     @Autowired
     private TracingHelper tracingHelper;
     
+    @Monitored("sink-Receive")
     @StreamListener(SinkChannels.INPUT)
     public void sinked(MessageDTO payload, Message<MessageDTO> wholeMessage) throws Exception {
         String opName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name

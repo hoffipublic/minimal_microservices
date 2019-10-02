@@ -4,6 +4,7 @@ import com.hoffi.minimal.microservices.microservice.bops.channels.SourceChannels
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
 import com.hoffi.minimal.microservices.microservice.helpers.ImplementationHint;
 import com.hoffi.minimal.microservices.microservice.helpers.SeqNr;
+import com.hoffi.minimal.microservices.microservice.monitoring.annotations.Monitored;
 import com.hoffi.minimal.microservices.microservice.tracing.SpanScoped;
 import com.hoffi.minimal.microservices.microservice.tracing.TracingHelper;
 import org.slf4j.Logger;
@@ -49,6 +50,7 @@ public class Source {
     // @Scheduled(fixedDelay = 2500, initialDelay = 500) // commented out in favour of the RefreshableScheduler in this same package
     //@HystrixCommand(fallbackMethod = "fallbackTimerMessageSource")
     @ImplementationHint(clazz = RefreshableScheduler.class)
+    @Monitored("source-Send")
     @SendTo(SourceChannels.OUTPUT) // redundant here, as we directly use the injected Message Channel
     public void timerMessageSource() {
         // defining a new Business-Process and starting a downstream Trace for it

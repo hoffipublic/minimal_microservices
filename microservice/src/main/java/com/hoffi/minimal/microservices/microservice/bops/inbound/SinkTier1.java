@@ -3,6 +3,7 @@ package com.hoffi.minimal.microservices.microservice.bops.inbound;
 import com.hoffi.minimal.microservices.microservice.bops.channels.Tier1Channels;
 import com.hoffi.minimal.microservices.microservice.bops.outbound.SourceTier1;
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
+import com.hoffi.minimal.microservices.microservice.monitoring.annotations.Monitored;
 import com.hoffi.minimal.microservices.microservice.tracing.SpanScoped;
 import com.hoffi.minimal.microservices.microservice.tracing.TracingHelper;
 import org.slf4j.Logger;
@@ -14,7 +15,6 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.messaging.Message;
 import org.springframework.stereotype.Component;
 import brave.Span;
-import io.micrometer.core.annotation.Timed;
 
 @Profile({"tier1"})
 @Component
@@ -32,7 +32,7 @@ public class SinkTier1 {
     @Autowired
     private SourceTier1 sourceTier1;
 
-    @Timed("sinkTier1StreamListenerMetrics")
+    @Monitored("sink1-Receive")
     @StreamListener(Tier1Channels.INPUT)
     public void sinkTier1StreamListener(MessageDTO payload, Message<MessageDTO> wholeMessage) throws Exception {
         String opName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name

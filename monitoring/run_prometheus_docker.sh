@@ -21,6 +21,31 @@ cat <<EOT >>  /etc/prometheus/prometheus.yml
     - targets: ['${ipLocal}:${appPort}']
 EOT
 
+or specifically for all microservice instances
+
+cat <<EOT >> /etc/prometheus/prometheus.yml
+  - job_name: 'microservice_source'
+    metrics_path: /actuator/prometheus
+    scrape_interval: 5s
+    static_configs:
+    - targets: ['192.168.0.2:8083']
+  - job_name: 'microservice_tier1'
+    metrics_path: /actuator/prometheus
+    scrape_interval: 5s
+    static_configs:
+    - targets: ['192.168.0.2:8082']
+  - job_name: 'microservice_tier2'
+    metrics_path: /actuator/prometheus
+    scrape_interval: 5s
+    static_configs:
+    - targets: ['192.168.0.2:8081']
+  - job_name: 'microservice_sink'
+    metrics_path: /actuator/prometheus
+    scrape_interval: 5s
+    static_configs:
+    - targets: ['192.168.0.2:8080']
+EOT
+
 exit
 
 docker restart prometheus
@@ -40,15 +65,18 @@ docker exec -ti grafana grafana-cli admin reset-admin-password 'admin'
 
 exit
 
+Grafana    URL: http://localhost:3000
+
+define data-source yourself:
+- data source: prometheues
+- URL http://${ipLocal}:9090
+
+
 prometheus URL: http://${ipLocal}:9090
 Grafana    URL: http://localhost:3000
 
 + import
 cat grafana/minimal_spring_prometheus.json | pbcopy
-
-or define yourself:
-- data source: prometheues
-- URL http://${ipLocal}:9090
 
 
 EOTEXT

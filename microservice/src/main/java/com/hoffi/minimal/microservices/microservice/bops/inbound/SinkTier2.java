@@ -3,6 +3,7 @@ package com.hoffi.minimal.microservices.microservice.bops.inbound;
 import com.hoffi.minimal.microservices.microservice.bops.channels.Tier2Channels;
 import com.hoffi.minimal.microservices.microservice.bops.outbound.SourceTier2;
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
+import com.hoffi.minimal.microservices.microservice.monitoring.annotations.Monitored;
 import com.hoffi.minimal.microservices.microservice.tracing.TracingHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +30,7 @@ public class SinkTier2 {
     @Autowired
     private SourceTier2 sourceTier2;
 
+    @Monitored("sink2-Receive")
     @StreamListener(Tier2Channels.INPUT)
     public void sinkTier2StreamListener(MessageDTO payload, Message<MessageDTO> wholeMessage) throws Exception {
         String opName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name

@@ -31,7 +31,6 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
 import annotations.AppTest;
 import annotations.MessagingTest;
 import annotations.TrivialTest;
@@ -39,9 +38,10 @@ import brave.Span;
 import testhelpers.DTOhelpers;
 
 @ActiveProfiles("tier2")
-@TestPropertySource(properties = { "spring.application.name=microservice_tier2", "app.busines.tier=tier2",
-        "eureka.client.enabled=false", "spring.cloud.config.enabled=false", "management.endpoints.enabled-by-default=false",
-        "management.endpoints.web.exposure.exclude=\"*\"" })
+// @TestPropertySource(properties = { "spring.application.name=microservice_tier2",
+//         "app.businessLogic.tier=tier2", "eureka.client.enabled=false", "spring.cloud.config.enabled=false",
+//         "management.endpoints.enabled-by-default=false", "management.endpoints.web.exposure.exclude='*''",
+//         "management.health.binders.enabled=false" })
 //@ImportAutoConfiguration(classes = { RefreshAutoConfiguration.class, TestSupportBinderAutoConfiguration.class,
 //        MessageCollectorAutoConfiguration.class })
 //@ContextConfiguration(classes = { MessageCollector.class, StreamBindingsConfig.class, CustomBaggage.class, Zipkin.class, SleuthConfig.class, Sourcetier2.class })
@@ -62,7 +62,7 @@ class SourceTier2Test extends DTOhelpers {
  //   import org.springframework.integration.channel.AbstractMessageChannel;
 
 
-    @Value("${app.busines.tier}")
+    @Value("${app.businessLogic.tier}")
     private String tier;
     @Value("${app.info.instance_index}")
     private String instanceIndex;

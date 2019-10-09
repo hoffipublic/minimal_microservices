@@ -4,7 +4,9 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-
+import com.hoffi.minimal.microservices.microservice.bops.outbound.SchedulingRate;
+import com.hoffi.minimal.microservices.microservice.bops.outbound.Source;
+import com.hoffi.minimal.microservices.microservice.helpers.RESThelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
@@ -13,10 +15,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.hoffi.minimal.microservices.microservice.helpers.RESThelper;
-import com.hoffi.minimal.microservices.microservice.bops.outbound.SchedulingRate;
-import com.hoffi.minimal.microservices.microservice.bops.outbound.Source;
 
 @Profile({ "source" })
 @RestController
@@ -48,7 +46,7 @@ public class SourcesWS {
     }
 
     @GetMapping(value = { "/fire" }, produces = "text/plain")
-    public String fire() {
+    public String fire() throws Exception {
         source.timerMessageSource();
         return "fired at " + new Date();
     }

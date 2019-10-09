@@ -161,15 +161,17 @@ public class BusinessLogic {
         }
 
         Random rand = new Random(System.currentTimeMillis());
-        long sleeptime = sleepMin + rand.nextInt(sleepMax - sleepMin);
-        if ((halfmax != null) && (halfmax.length > 0)) {
+        long sleeptime;
+        if ((halfmax == null) || (halfmax.length == 0)) {
+            sleeptime = sleepMin + rand.nextInt(sleepMax - sleepMin);
+        } else {
             sleeptime = sleepMin + rand.nextInt((sleepMax / 2) - sleepMin);
         }
         try {
-            log.info("[{} in {}] send: {} sleep ms:{}", seq, instanceIndex, tier, sleeptime);
+            log.info("[{} in {}] BusinessLogic: {} sleep ms:{}", seq, instanceIndex, tier, sleeptime);
             Thread.sleep(sleeptime);
         } catch (InterruptedException e) {
-            log.error("[{} in {}] send: {} Thread.sleep: {}", seq, instanceIndex, tier, e.getMessage());
+            log.error("[{} in {}] BusinessLogic: {} Thread.sleep: {}", seq, instanceIndex, tier, e.getMessage());
         }
     }
 

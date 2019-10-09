@@ -30,7 +30,6 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
 import annotations.AppTest;
 import annotations.MessagingTest;
 import annotations.TrivialTest;
@@ -38,9 +37,10 @@ import brave.Span;
 import testhelpers.DTOhelpers;
 
 @ActiveProfiles("tier1")
-@TestPropertySource(properties = { "spring.application.name=microservice_tier1", "app.businessLogic.tier=tier1",
-        "eureka.client.enabled=false", "spring.cloud.config.enabled=false", "management.endpoints.enabled-by-default=false",
-        "management.endpoints.web.exposure.exclude=\"*\"" })
+// @TestPropertySource(properties = { "spring.application.name=microservice_tier1",
+//         "app.businessLogic.tier=tier1", "eureka.client.enabled=false", "spring.cloud.config.enabled=false",
+//         "management.endpoints.enabled-by-default=false", "management.endpoints.web.exposure.exclude='*''",
+//         "management.health.binders.enabled=false" })
 //@ImportAutoConfiguration(classes = { RefreshAutoConfiguration.class, TestSupportBinderAutoConfiguration.class,
 //        MessageCollectorAutoConfiguration.class })
 //@ContextConfiguration(classes = { MessageCollector.class, StreamBindingsConfig.class, CustomBaggage.class, Zipkin.class, SleuthConfig.class, SourceTier1.class })

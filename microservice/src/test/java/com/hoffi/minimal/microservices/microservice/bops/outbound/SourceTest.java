@@ -23,20 +23,19 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
 import annotations.AppTest;
 import annotations.MessagingTest;
 import testhelpers.DTOhelpers;
 
 @ActiveProfiles("source")
-@TestPropertySource(properties = { "app.sources.fixedDelay=500", "spring.application.name=microservice_source",
-        "app.businessLogic.tier=source", "eureka.client.enabled=false", "spring.cloud.config.enabled=false",
-        "management.endpoints.enabled-by-default=false", "management.endpoints.web.exposure.exclude=\"*\"" })
+// @TestPropertySource(properties = { "app.sources.fixedDelay=500", "spring.application.name=microservice_source",
+//         "app.businessLogic.tier=source", "eureka.client.enabled=false", "spring.cloud.config.enabled=false",
+//         "management.endpoints.enabled-by-default=false", "management.endpoints.web.exposure.exclude='*''",
+//         "management.health.binders.enabled=false" })
 //@ImportAutoConfiguration(classes = { RefreshAutoConfiguration.class, MessageCollectorAutoConfiguration.class })
 //@ContextConfiguration(classes = { RefreshableScheduler.class, SchedulingRate.class, StreamBindingsConfig.class, MessageCollector.class,
 //        CustomBaggage.class, Zipkin.class, SleuthConfig.class, Source.class })
 @EnableScheduling
-// @EnableCircuitBreaker
 //@JsonTest // don't know but test does not start at all with this
 @AutoConfigureCache
 @AutoConfigureJson

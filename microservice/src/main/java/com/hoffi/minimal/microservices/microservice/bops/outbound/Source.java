@@ -18,6 +18,7 @@ import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
 import brave.Span;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 
 @Profile({ "source" })
 @Component
@@ -48,11 +49,11 @@ public class Source {
 
     // publishing to an exchange with no routable queue will never get an exception (only an async return callback)
     // @Scheduled(fixedDelay = 2500, initialDelay = 500) // commented out in favour of the RefreshableScheduler in this same package
-    //@HystrixCommand(fallbackMethod = "fallbackTimerMessageSource")
     @ImplementationHint(clazz = RefreshableScheduler.class)
     @Monitored("source-Send")
+    @CircuitBreaker(name = "source", fallbackMethod = "timerMessageSourceFallback") // see application.yml
     @SendTo(SourceChannels.OUTPUT) // redundant here, as we directly use the injected Message Channel
-    public void timerMessageSource() {
+    public void timerMessageSource() throws Exception {
         // defining a new Business-Process and starting a downstream Trace for it
         String opName = new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
 
@@ -75,12 +76,19 @@ public class Source {
             log.error(opName, e);
             // Report any errors properly.
             tracingHelper.reportException(opSpan, e);
+            throw e;
         } finally {
             log.info("finishing initial's Trace operation's span {} ...", opName);
             tracingHelper.finishSpanAndOperation(opSpan, opName); // trace will not be propagated to Zipkin/Jaeger unless explicitly finished
             log.info("AFTER INITIAL's Trace operation --> CHECK if BusinessProcess info in logging whatsoever");
         }
     }
+
+    /** fallback method for timerMessageSource (same method signature with added Throwable param) */
+    public void timerMessageSourceFallback(RuntimeException ex) throws Exception {
+        log.warn(String.format("FALLBACK because of: '%s'", ex.getMessage()));
+    }
+
 
     // @NewSpan("SourceSendToFallback")
     // public void fallbackTimerMessageSource(Throwable t) {

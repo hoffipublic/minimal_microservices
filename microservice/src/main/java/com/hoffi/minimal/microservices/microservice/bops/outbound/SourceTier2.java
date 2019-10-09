@@ -16,6 +16,7 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 
 @Profile({ "tier2" })
 @Component
@@ -48,26 +49,10 @@ public class SourceTier2 {
     @Autowired
     private BusinessLogic businessLogic;
 
-    /*
-     * When calls to a particular service exceed circuitBreaker.requestVolumeThreshold (default: 20 requests) and the
-     * failure percentage is greater than circuitBreaker.errorThresholdPercentage (default: >50%) in a rolling window
-     * defined by metrics.rollingStats.timeInMilliseconds (default: 10 seconds), the circuit opens and the call is not made.
-     * In cases of error and an open circuit, a fallback can be provided by the developer.
-     */
-
     // publishing to an exchange with no routable queue will never get an exception (only an async return callback)
-    // @formatter:off
     @Monitored("sink2-Send")
+    @CircuitBreaker(name = "tier2", fallbackMethod = "sourceTier2SendToFallback") // see application.yml
     @SendTo(Tier2Channels.OUTPUT) // redundant here, as we directly use the injected Message Channel
-    // @HystrixCommand(fallbackMethod = "fallbackTimerMessageSource", commandProperties = {
-    //         @HystrixProperty(name = "metrics.rollingStats.timeInMilliseconds", value = "20000"), // time that the circuitbreakes "remembers" calls to this circuitbreaker
-    //         @HystrixProperty(name = "circuitBreaker.requestVolumeThreshold", value = "3"), // to trip open, more than this calls have to come in within the metrics.rollingStats.timeInMilliseconds
-    //         @HystrixProperty(name = "circuitBreaker.errorThresholdPercentage", value = "60"), //the error percentage at or above which the circuit should trip open and start short-circuiting requests to fallback logic
-    //         @HystrixProperty(name = "circuitBreaker.sleepWindowInMilliseconds", value = "10000"), // if opened, time how long will be open in any case
-    //         @HystrixProperty(name = "execution.isolation.thread.timeoutInMilliseconds", value = "3000") // time after which the fallback method willl be called anyway
-    // })
-    // @NewSpan("SourceTier2SendTo")
-    // @formatter:on
     public void sourceTier2SendTo(MessageDTO payload) throws Exception {
         long startTime = System.currentTimeMillis();
         String opName = new Object() {}.getClass().getEnclosingMethod().getName();
@@ -105,6 +90,11 @@ public class SourceTier2 {
         }
         
         log.info("[{} in {}] send: ========AFTER AFTER 'businessLogic' has finished===========", payload.seq, instanceIndex);
+    }
+
+    /** fallback method for sourceTier2SendTo (same method signature with added Throwable param) */
+    public void sourceTier2SendToFallback(MessageDTO payload, RuntimeException ex) throws Exception {
+        log.warn(String.format("FALLBACK for messageDTO %s because of: '%s'", payload.seq, ex.getMessage()));
     }
 
     // @NewSpan("SourceTier2SendToFallback")

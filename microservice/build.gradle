@@ -17,7 +17,15 @@ dependencies {
     implementation "org.springframework.boot:spring-boot-starter-web"
     implementation "org.springframework.cloud:spring-cloud-starter"
 
-    //implementation "spring-cloud:spring-cloud-circuitbreaker:${vs('springCloudCircuitbreakerSnapshotVersion')}"
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+    //implementation "org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j:${vs('springCloudCircuitbreakerSnapshotVersion')}"
+    // implementation "io.github.resilience4j:resilience4j-spring-boot2:${v('resilience4jVersion')}"
+    compile "io.github.resilience4j:resilience4j-spring-cloud2:${v('resilience4jVersion')}"
+    compile "io.github.resilience4j:resilience4j-circuitbreaker:${v('resilience4jVersion')}"
+    compile "io.github.resilience4j:resilience4j-timelimiter:${v('resilience4jVersion')}"
+
+    compile "io.github.resilience4j:resilience4j-micrometer:${v('resilience4jVersion')}"
+    compile "io.github.resilience4j:resilience4j-prometheus:${v('resilience4jVersion')}"
 
     // implementation "io.opentracing.brave:brave-opentracing"
 
@@ -33,7 +41,6 @@ dependencies {
 	implementation 'org.springframework.cloud:spring-cloud-starter-sleuth'+":${vs('springSleuthVersion')}" // zipkin'
 	implementation 'org.springframework.cloud:spring-cloud-starter-zipkin'+":${vs('springSleuthVersion')}" // zipkin'
 
-    implementation 'org.springframework.boot:spring-boot-starter-aop'
     runtime "io.micrometer:micrometer-registry-prometheus:${v('micrometerRegistryPrometheusVersion')}"
 
     // implementation "io.zipkin.reporter2:zipkin-sender-amqp-client:2.10.3"

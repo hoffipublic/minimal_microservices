@@ -13,6 +13,7 @@ logging:
 spring:
   #main:
   #  allow-bean-definition-overriding: true
+  jackson.serialization.indent_output: true
   jmx:
     enabled: false
   sleuth:
@@ -56,6 +57,22 @@ spring:
     base-url: ${ZIPKIN_URL:http://localhost:9411} # http://localhost:14268/api/traces #
     sender:
       type: web
+
+resilience4j:
+  circuitbreaker:
+    configs: # create CircuitBreakerRegistries
+      default: # configure the global CircuitBreakerRegistry defaults for creating CircuitBreakerConfig
+        ring-buffer-size-in-closed-state: 5
+        ring-buffer-size-in-half-open-state: 5
+        wait-duration-in-open-state: 1000
+        failure-rate-threshold: 33
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+      sourcesDefault: # Create a CircuitBreakerRegistry with a custom global configuration
+        ring-buffer-size-in-closed-state: 3
+        ring-buffer-size-in-half-open-state: 3
+        wait-duration-in-open-state: 1000
+        failure-rate-threshold: 20
 
 # opentracing:
 #   jaeger:
@@ -101,14 +118,7 @@ my:
   test:
     property: "from application.yml"
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: '*'
-  endpoint:
-    health:
-      show-details: always
+# management: --> bootstrap.yml
 
 ---
 
@@ -129,6 +139,15 @@ spring:
           destination: minimal-SourceTo1
           contentType: application/json
 
+resilience4j:
+  circuitbreaker:
+    instances: # creating CircuitBreaker instances
+      source:
+        base-config: sourcesDefault
+        wait-duration-in-open-state: 3000
+        # record-exceptions:
+        # ignore-exceptions:
+
 ---
 
 spring:
@@ -144,6 +163,21 @@ spring:
           destination: minimal-1To2
           contentType: application/json
 
+resilience4j:
+  circuitbreaker:
+    instances: # creating CircuitBreaker instances
+      tier1:
+        base-config: default
+        wait-duration-in-open-state: 3000
+        # record-exceptions:
+        # ignore-exceptions:
+
+app:
+  businessLogic:
+    # Tier1 has 4 businessLogic methods and Tier2 has 3 businessLogicMethods
+    sleepMin: 265
+    sleepMax: 1000
+
 ---
 
 spring:
@@ -158,6 +192,21 @@ spring:
         minimal-2ToSink: # has to match channels.Tier2Channels.OUTPUT
           destination: minimal-2ToSink
           contentType: application/json
+
+resilience4j:
+  circuitbreaker:
+    instances: # creating CircuitBreaker instances
+      tier2:
+        base-config: default
+        wait-duration-in-open-state: 3000
+        # record-exceptions:
+        # ignore-exceptions:
+
+app:
+  businessLogic:
+    # Tier1 has 4 businessLogic methods and Tier2 has 3 businessLogicMethods
+    sleepMin: 265
+    sleepMax: 1000
 
 ---
 

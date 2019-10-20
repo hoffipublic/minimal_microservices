@@ -29,6 +29,7 @@ buildscript {
         classpath "com.bmuschko:gradle-docker-plugin:${vp('dockerPluginVersion')}"
 
         classpath "org.springframework.boot:spring-boot-gradle-plugin:${v('springBootVersion')}" // only if using milestones, otherwise in plugins { } section
+        classpath "gradle.plugin.org.springframework.cloud:spring-cloud-contract-gradle-plugin:${v('springCloudContractVersion')}"
         classpath "org.yaml:snakeyaml:${v('snakeYamlVersion')}" // https://bitbucket.org/asomov/snakeyaml/wiki/Documentation
     }
 }
@@ -69,6 +70,7 @@ subprojects {
     apply plugin: 'idea'
     apply plugin: 'io.spring.dependency-management'
     apply plugin: 'org.springframework.boot'
+    apply plugin: 'org.springframework.cloud.contract'
     apply plugin: 'com.gorylenko.gradle-git-properties'
     apply plugin: 'propdeps'
     apply plugin: 'propdeps-maven'

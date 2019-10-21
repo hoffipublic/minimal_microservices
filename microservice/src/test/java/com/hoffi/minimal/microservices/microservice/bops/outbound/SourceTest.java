@@ -80,7 +80,7 @@ class SourceTest extends DTOhelpers {
         referenceMessageDTO.seq = "1";
         referenceMessageDTO.message = TH.REF_MESSAGE_TIMER;
 
-        // every receive for test below increases MessageDTO seq and BOP.bpId
+        // every receive for test below increases MessageDTO seq
 
         // Option 1: receive message tests with MessageQueueMatcher
         JsonContent<MessageDTO> referenceJsonDTO = this.json.write(referenceMessageDTO);

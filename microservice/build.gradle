@@ -1,3 +1,4 @@
+import org.springframework.cloud.contract.verifier.config.TestFramework
 import org.gradle.internal.logging.text.StyledTextOutput 
 import org.gradle.internal.logging.text.StyledTextOutputFactory
 import org.gradle.internal.logging.text.StyledTextOutput.Style
@@ -77,6 +78,12 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-params")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
     testImplementation('org.springframework.cloud:spring-cloud-stream-test-support') // messaging test support for spring-cloud-stream
+    // spring-cloud-contract
+    // API implementor (procucer) side
+    testImplementation("org.springframework.cloud:spring-cloud-starter-contract-verifier")
+    // API consumer (client) side
+    //testImplementation("org.springframework.cloud:spring-cloud-starter-contract-stub-runner")
+
     testImplementation(
     // localGroovy(), // use gradles internal version of groovy
         "org.codehaus.groovy:groovy-all:${versions.latest.groovy['groovyAllVersion']}",
@@ -87,6 +94,11 @@ dependencies {
 //        transitive = false
 //    }
 }
+// configurations {
+//     contracts {
+//         transitive = false
+//     }
+// }
 
 compileJava.dependsOn(processResources)
 
@@ -117,6 +129,10 @@ publishing {
 
             from components.java
         }
+		stubs(MavenPublication) {
+			artifactId "${baseName}-stubs"
+			artifact verifierStubsJar
+		}
     }
     //   repositories {
     //        maven {
@@ -140,11 +156,24 @@ build.finalizedBy publishToMavenLocal // push jars to mavenLocal after build
 //publishToMavenLocal.finalizedBy whatIsPublished
 //publishPubNamePublicationToMavenLocal.finalizedBy whatIsPublished
 
-//configuration {
-//    contracts {
-//        transitive = false
-//    }
-//}
+contracts {
+    targetFramework = TestFramework.JUNIT5
+    baseClassForTests = 'com.hoffi.minimal.microservices.microservice.contractbaseclasses.DefaultBaseClass'
+    baseClassMappings {
+        // matching path below src/test/resources/contracts/
+		baseClassMapping('.*inbound.*', 'com.hoffi.minimal.microservices.microservice.contractbaseclasses.SinkBaseClass')
+		baseClassMapping('.*outbound.*', 'com.hoffi.minimal.microservices.microservice.contractbaseclasses.SourceBaseClass')
+	}
+    // // Creates an array with static imports that should be included in generated tests(for example ['org.myorg.Matchers.*']). By default, it creates an empty array
+    // staticImports = ['org.myorg.Matchers.*']
+    // // the following properties are used when you want to provide where the JAR with contract lays
+    // contractDependency {
+    //     stringNotation = ''
+    // }
+
+    // contractsPath = ''
+    // contractsWorkOffline = false
+}
 
 compileJava {
     // options.compilerArgs += ["--add-modules", "java.xml.bind"]
@@ -214,7 +243,7 @@ test {
     }
 
     beforeTest { descriptor ->
-        logger.lifecycle("Running test: " + descriptor)
+        logger.lifecycle("Running " + descriptor)
     }
     // listen to standard out and standard error of the test JVM(s)
     onOutput { descriptor, event ->

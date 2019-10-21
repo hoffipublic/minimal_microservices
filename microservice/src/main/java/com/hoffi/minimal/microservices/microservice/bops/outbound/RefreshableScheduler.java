@@ -38,7 +38,9 @@ public class RefreshableScheduler implements SchedulingConfigurer {
                 log.error("Exception on calling source.timerMessageSource() in RefreshableScheduler", e);
             } // this will be called
         }, triggerContext -> {
-            if (springEnv.acceptsProfiles(Profiles.of("once"))) {
+            if (springEnv.acceptsProfiles(Profiles.of("unscheduled"))) {
+                return null;
+            } else if (springEnv.acceptsProfiles(Profiles.of("once"))) {
                 if (triggerContext.lastActualExecutionTime() == null) {
                     return new Date();
                 }

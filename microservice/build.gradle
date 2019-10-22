@@ -60,12 +60,12 @@ dependencies {
 
 
     implementation 'org.springframework.cloud:spring-cloud-stream'
+    //implemenentation "org.springframework.cloud:spring-cloud-starter-stream-rabbit"
     implementation 'org.springframework.amqp:spring-rabbit'
     implementation 'org.springframework.cloud:spring-cloud-stream-binder-rabbit'
 
     // implementation 'org.springframework.cloud:spring-cloud-starter-netflix-hystrix'
 
-    
     // spring-boot-starter-test already includes the following provided libraries
     // AssertJ
     // Hamcrest
@@ -82,7 +82,7 @@ dependencies {
     // API implementor (procucer) side
     testImplementation("org.springframework.cloud:spring-cloud-starter-contract-verifier")
     // API consumer (client) side
-    //testImplementation("org.springframework.cloud:spring-cloud-starter-contract-stub-runner")
+    testImplementation("org.springframework.cloud:spring-cloud-starter-contract-stub-runner")
 
     testImplementation(
     // localGroovy(), // use gradles internal version of groovy
@@ -130,7 +130,8 @@ publishing {
             from components.java
         }
 		stubs(MavenPublication) {
-			artifactId "${baseName}-stubs"
+			//artifactId "${baseName}-stubs"
+			artifactId "${baseName}"
 			artifact verifierStubsJar
 		}
     }

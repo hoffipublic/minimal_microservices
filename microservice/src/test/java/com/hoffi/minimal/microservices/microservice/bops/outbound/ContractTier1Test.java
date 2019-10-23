@@ -22,9 +22,10 @@ import org.springframework.test.context.ActiveProfiles;
 
 @ActiveProfiles({"tier1"})
 //@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
-@SpringBootTest(
-	properties = {
-		"--spring.autoconfigure.exclude=" })
+@SpringBootTest
+// (
+// 	properties = {
+// 		"--spring.autoconfigure.exclude=" })
 @AutoConfigureStubRunner(ids = {"demo:minimal_microservice:+:stubs"},
         stubsMode = StubRunnerProperties.StubsMode.LOCAL
         )

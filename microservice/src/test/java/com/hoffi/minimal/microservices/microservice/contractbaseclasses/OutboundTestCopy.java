@@ -1,24 +1,14 @@
 package com.hoffi.minimal.microservices.microservice.contractbaseclasses;
 
-import com.hoffi.minimal.microservices.microservice.contractbaseclasses.SourceBaseClass;
+import static com.toomuchcoding.jsonassert.JsonAssertion.assertThatJson;
+import static org.assertj.core.api.Assertions.assertThat;
+import javax.inject.Inject;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
-import java.io.StringReader;
-import javax.inject.Inject;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.cloud.contract.verifier.messaging.internal.ContractVerifierMessage;
 import org.springframework.cloud.contract.verifier.messaging.internal.ContractVerifierMessaging;
 import org.springframework.cloud.contract.verifier.messaging.internal.ContractVerifierObjectMapper;
-import org.w3c.dom.Document;
-import org.xml.sax.InputSource;
-
-import static com.toomuchcoding.jsonassert.JsonAssertion.assertThatJson;
-import static org.springframework.cloud.contract.verifier.assertion.SpringCloudContractAssertions.assertThat;
-import static org.springframework.cloud.contract.verifier.messaging.util.ContractVerifierMessagingUtil.headers;
-import static org.springframework.cloud.contract.verifier.util.ContractVerifierUtil.*;
-import static org.springframework.cloud.contract.verifier.util.ContractVerifierUtil.fileToBytes;
 
 public class OutboundTestCopy extends SourceBaseClass {
 
@@ -33,8 +23,12 @@ public class OutboundTestCopy extends SourceBaseClass {
 		// then:
 			ContractVerifierMessage response = contractVerifierMessaging.receive("minimal-SourceTo1");
 			assertThat(response).isNotNull();
-			assertThat(response.getHeader("BOOK-NAME")).isNotNull();
-			assertThat(response.getHeader("BOOK-NAME").toString()).isEqualTo("foo");
+			assertThat(response.getHeader("baggage_ddd")).isNotNull();
+			assertThat(response.getHeader("baggage_ddd").toString()).isEqualTo("testBPDomain");
+			assertThat(response.getHeader("baggage_bp")).isNotNull();
+			assertThat(response.getHeader("baggage_bp").toString()).isEqualTo("testBProcess");
+			assertThat(response.getHeader("baggage_bpids")).isNotNull();
+			assertThat(response.getHeader("baggage_bpids").toString()).isEqualTo("43,44");
 			assertThat(response.getHeader("contentType")).isNotNull();
 			assertThat(response.getHeader("contentType").toString()).isEqualTo("application/json");
 		// and:

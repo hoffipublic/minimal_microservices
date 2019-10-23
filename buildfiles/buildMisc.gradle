@@ -9,6 +9,16 @@ task printClasspath(group:project.rootProject.ext.group, description:"print clas
     }
 }
 
+task printTestClasspath(group:project.rootProject.ext.group, description:"print tests classpath") {
+    dependsOn subprojects.build
+    doLast {
+        // filters only existing and non-empty dirs
+        sourceSets.test.runtimeClasspath
+            .filter { (it.isDirectory() && it.listFiles().length > 0) || it.isFile() }
+            .each{ println it }
+    }
+}
+
 task showBootRunCommand(group:project.rootProject.ext.group, description:"show how to locally run the spring boot app") {
     doLast {
         println "for user: " + System.getProperty('user.name', 'default')

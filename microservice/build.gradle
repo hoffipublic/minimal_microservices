@@ -80,9 +80,9 @@ dependencies {
     testImplementation('org.springframework.cloud:spring-cloud-stream-test-support') // messaging test support for spring-cloud-stream
     // spring-cloud-contract
     // API implementor (procucer) side
-    testImplementation("org.springframework.cloud:spring-cloud-starter-contract-verifier")
+    testImplementation("org.springframework.cloud:spring-cloud-starter-contract-verifier:${vs('springCloudContractVersion')}")
     // API consumer (client) side
-    testImplementation("org.springframework.cloud:spring-cloud-starter-contract-stub-runner")
+    testImplementation("org.springframework.cloud:spring-cloud-starter-contract-stub-runner:${vs('springCloudContractVersion')}")
 
     testImplementation(
     // localGroovy(), // use gradles internal version of groovy

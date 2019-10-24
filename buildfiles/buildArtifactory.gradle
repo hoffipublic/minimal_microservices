@@ -6,7 +6,7 @@ publishing {
         mavenJava(MavenPublication) {
             from components.java
 //            artifact(file("$buildDir/publications/mavenJava/pom-default.xml"))
-//            artifact(file("$buildDir/libs/${project.baseName}-${project.rootProject.ext.version}.jar"))
+//            artifact(file("$buildDir/libs/${project.archivesBaseName}-${project.rootProject.version}.jar"))
         }
     }
 }
@@ -40,7 +40,7 @@ artifactory {
   clientConfig.setEnvVarsExcludePatterns('*pass*,*secret*')
   clientConfig.setEnvVarsIncludePatterns('*not-secret*')
   clientConfig.info.addEnvironmentProperty('test.adding.dynVar',new java.util.Date().toString())
-  clientConfig.info.setBuildName("${project.baseName}_${project.ext.environment}_build_${project.rootProject.ext.branch}")
+  clientConfig.info.setBuildName("${project.archivesBaseName}_${project.ext.environment}_build_${project.rootProject.ext.branch}")
   clientConfig.info.setBuildNumber(utctimepostfix)
   clientConfig.timeout = 300 // Artifactory connection timeout (in seconds). The default timeout is 300 seconds.
 }

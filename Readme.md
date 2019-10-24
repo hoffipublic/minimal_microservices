@@ -82,13 +82,20 @@ e.g. by
 - chmod 755 zipkin.jar
 - java -jar zipkin.jar
 
-#### download and start a rabbitmq-server
+Access the zipkin UI under `https://<zipkinServerIP>:9411`
+
+#### download and start a rabbitmq-server:
 
 follow instructions on [RabbitMQ Homepage](https://www.rabbitmq.com/), use a dockerized version or install it via your favorite package manager
 
-#### download and install a prometheus server for monitoring
+#### download and install a prometheus server for monitoring:
 
 `./monitoring/run_prometheus_docker.sh` will give you some instructions on how to setup a `dockerized prometheues server`
+
+Access Prometheus server under `http://<prometheusServerIP>:9090/`
+
+Access the Grafana dasboard under `http://<grafanaIP>:3000`
+
 
 <br/>
 <br/>
@@ -161,11 +168,18 @@ so all the *\_interesting\_* implementation things reside inside subproject-fold
 <br/>
 <br/>
 
+## Birds-Eye-View (or: where to find the interesting code bits in the repo)
+
+`<tbd>`
+
+<br/>
+<br/>
+
 ## Implementation Features!!!
 
 ### spring-cloud-stream messaging between µService Apps
 
-<tbd>
+`<tbd>`
 
 
 
@@ -175,7 +189,7 @@ so all the *\_interesting\_* implementation things reside inside subproject-fold
 
 ### spring-cloud-circuitbreaker and Resilience4j Circuitbreakers
 
-<tbd>
+`<tbd>`
 
 
 
@@ -186,7 +200,7 @@ so all the *\_interesting\_* implementation things reside inside subproject-fold
 
 ### Tracing with spring-cloud-sleuth and spring-cloud-zipkin
 
-<tbd>
+`<tbd>`
 
 
 
@@ -197,7 +211,7 @@ so all the *\_interesting\_* implementation things reside inside subproject-fold
 
 ### Monitoring arbitrary methods via custom Annotations and AOP
 
-<tbd>
+`<tbd>`
 
 
 

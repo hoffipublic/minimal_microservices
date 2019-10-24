@@ -5,8 +5,8 @@
 // in master build.gradle: apply from: 'buildCf.gradle'
 
 cloudfoundry {
-    application = project.ext.baseName
-    uri =         project.ext.baseName+project.getConfigProp('cloudfoundry.baseURL')
+    application = project.ext.archiveBaseName
+    uri =         project.ext.archiveBaseName+project.getConfigProp('cloudfoundry.baseURL')
     target =      "https://api."+project.getConfigProp('cloudfoundry.baseURL')
     organization = project.getConfigProp('cloudfoundry.organization')
     space =        project.getConfigProp('cloudfoundry.space')
@@ -22,7 +22,7 @@ cloudfoundry {
     //buildpack = "java_springInsight_offline"
     //buildpack = "java_buildpack_offline"
 
-    def jarFile = new File("${project.buildDir}/libs/${project.baseName}-${project.version}.jar")
+    def jarFile = new File("${project.buildDir}/libs/${project.archivesBaseName}-${project.version}.jar")
     env = [
         "VERSION": project.version,
         "BUILD_TIME": new java.util.Date(jarFile.lastModified()).format('EEE MMM dd HH:mm:ss z yyyy'),
@@ -92,7 +92,7 @@ task generateCfManifest(group:project.rootProject.ext.group, description:"genera
   disk_quota: ${project.cloudfoundry.diskQuota}M
 """
         if(!jarDir.toLowerCase().startsWith("none")) {
-            manifest += "  path: ${jarDir}${project.ext.baseName}-${project.jar.version}.jar\n"
+            manifest += "  path: ${jarDir}${project.ext.archiveBaseName}-${project.jar.archiveVersion}.jar\n"
         }
         manifest += serviceConcat
         manifest += envConcat
@@ -251,16 +251,16 @@ configure(project) {
 
             // cf bind-services
             if((project.getConfigProp('services.bindings').size() > 0) && callWithBindings) {
-                commands += "\r\ncf push ${appName} -k ${cloudfoundry.diskQuota}M -m ${cloudfoundry.memory}M -i ${cloudfoundry.instances} -p ${jarDir}${sep}${subproject.jar.baseName}-${subproject.jar.version}.jar --no-start"
+                commands += "\r\ncf push ${appName} -k ${cloudfoundry.diskQuota}M -m ${cloudfoundry.memory}M -i ${cloudfoundry.instances} -p ${jarDir}${sep}${subproject.archivesBaseName}-${subproject.version}.jar --no-start"
                 project.getConfigProp('services.bindings').each { service ->
                     def s = project.getConfigProp('services.serviceMap')[service]
                     commands += "\r\ncf bind-service ${appName} ${s.name}"
                 }
             } else {
                 if((project.getConfigProp('services.bindings').size() > 0) || (cloudfoundry.env.size() > 0)) {
-                    commands += "\r\ncf push ${appName} -k ${cloudfoundry.diskQuota}M -m ${cloudfoundry.memory}M -i ${cloudfoundry.instances} -p ${jarDir}${sep}${subproject.jar.baseName}-${subproject.jar.version}.jar --no-start"
+                    commands += "\r\ncf push ${appName} -k ${cloudfoundry.diskQuota}M -m ${cloudfoundry.memory}M -i ${cloudfoundry.instances} -p ${jarDir}${sep}${subproject.archivesBaseName}-${subproject.version}.jar --no-start"
                 } else {
-                    commands += "\r\ncf push ${appName} -k ${cloudfoundry.diskQuota}M -m ${cloudfoundry.memory}M -i ${cloudfoundry.instances} -p ${jarDir}${sep}${subproject.jar.baseName}-${subproject.jar.version}.jar"
+                    commands += "\r\ncf push ${appName} -k ${cloudfoundry.diskQuota}M -m ${cloudfoundry.memory}M -i ${cloudfoundry.instances} -p ${jarDir}${sep}${subproject.archivesBaseName}-${subproject.version}.jar"
                 }
             }
 
@@ -282,7 +282,7 @@ configure(project) {
             }
 
             commands += "\r\ncf create-app-manifest ${appName} -p manifest-" + (project.hasProperty('env') ? env : 'dev') + ".yml"
-            commands += "\r\necho '  path: ${jarDir}${sep}${subproject.jar.baseName}-${subproject.jar.version}.jar' >> manifest-" + (project.hasProperty('env') ? env : 'dev') + ".yml"
+            commands += "\r\necho '  path: ${jarDir}${sep}${subproject.archivesBaseName}-${subproject.version}.jar' >> manifest-" + (project.hasProperty('env') ? env : 'dev') + ".yml"
 
             return commands
         }

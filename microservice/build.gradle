@@ -3,10 +3,10 @@ import org.gradle.internal.logging.text.StyledTextOutput
 import org.gradle.internal.logging.text.StyledTextOutputFactory
 import org.gradle.internal.logging.text.StyledTextOutput.Style
 
-project.ext.baseName = 'minimal_microservice' // also used as artifactId in buildfiles/buildArtifactory.gradle
-project.archivesBaseName = project.ext.baseName
+project.ext.archiveBaseName = 'minimal_microservice' // also used as artifactId in buildfiles/buildArtifactory.gradle
+// archive(s!!!)BaseName
+project.archivesBaseName = project.ext.archiveBaseName
 group = project.rootProject.ext.group
-baseName = project.ext.baseName
 version = project.rootProject.ext.version
 project.ext.port = 8761 // this must match the port set in src/main/resources/bootstrap.yml
 
@@ -21,12 +21,12 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-aop'
     //implementation "org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j:${vs('springCloudCircuitbreakerSnapshotVersion')}"
     // implementation "io.github.resilience4j:resilience4j-spring-boot2:${v('resilience4jVersion')}"
-    compile "io.github.resilience4j:resilience4j-spring-cloud2:${v('resilience4jVersion')}"
-    compile "io.github.resilience4j:resilience4j-circuitbreaker:${v('resilience4jVersion')}"
-    compile "io.github.resilience4j:resilience4j-timelimiter:${v('resilience4jVersion')}"
+    implementation "io.github.resilience4j:resilience4j-spring-cloud2:${v('resilience4jVersion')}"
+    implementation "io.github.resilience4j:resilience4j-circuitbreaker:${v('resilience4jVersion')}"
+    implementation "io.github.resilience4j:resilience4j-timelimiter:${v('resilience4jVersion')}"
 
-    compile "io.github.resilience4j:resilience4j-micrometer:${v('resilience4jVersion')}"
-    compile "io.github.resilience4j:resilience4j-prometheus:${v('resilience4jVersion')}"
+    implementation "io.github.resilience4j:resilience4j-micrometer:${v('resilience4jVersion')}"
+    implementation "io.github.resilience4j:resilience4j-prometheus:${v('resilience4jVersion')}"
 
     // implementation "io.opentracing.brave:brave-opentracing"
 
@@ -42,7 +42,7 @@ dependencies {
 	implementation 'org.springframework.cloud:spring-cloud-starter-sleuth'+":${vs('springSleuthVersion')}" // zipkin'
 	implementation 'org.springframework.cloud:spring-cloud-starter-zipkin'+":${vs('springSleuthVersion')}" // zipkin'
 
-    runtime "io.micrometer:micrometer-registry-prometheus:${v('micrometerRegistryPrometheusVersion')}"
+    runtimeOnly "io.micrometer:micrometer-registry-prometheus:${v('micrometerRegistryPrometheusVersion')}"
 
     // implementation "io.zipkin.reporter2:zipkin-sender-amqp-client:2.10.3"
     implementation "io.zipkin.reporter2:zipkin-reporter:2.10.3"
@@ -124,14 +124,14 @@ publishing {
     publications {
         maven(MavenPublication) {
             groupId = groupId
-            artifactId = baseName
+            artifactId = project.ext.archiveBaseName
             version = version
 
             from components.java
         }
 		stubs(MavenPublication) {
-			//artifactId "${baseName}-stubs"
-			artifactId "${baseName}"
+			//artifactId "${archiveBaseName}-stubs"
+			artifactId project.ext.archiveBaseName
 			artifact verifierStubsJar
 		}
     }
@@ -209,17 +209,17 @@ compileJava.dependsOn(processResources)
 bootJar {
     launchScript() // make the fat.jar executable (e.g. for sudo ln -s /var/myapp/myapp.jar /etc/init.d/myapp)
     doLast {
-        println "${project.group}:${project.baseName}:${project.version} ==> ./build/libs/" + jar.archivePath.name
+        println "${project.group}:${project.archivesBaseName}:${project.version} ==> ./build/libs/" + jar.archivePath.name
     }
 }
 
 bootRun { systemProperties = System.properties } // ensure Gradle passes command line arguments to the JVM
 
 jar {
-    baseName = project.ext.baseName // from buildExt.gradle
-    version = project.rootProject.ext.version // from buildExt.gradle
+    //archiveBaseName = project.ext.archiveBaseName = project.archivesBaseName // latter with "s" archive(s)!!!
+    // archiveVersion = project.rootProject.ext.version
     manifest {
-        attributes 'Implementation-Title' : project.ext.baseName,
+        attributes 'Implementation-Title' : project.ext.archiveBaseName,
                    'Implementation-Version' : project.rootProject.ext.version,
                    'provider': 'gradle'
     }

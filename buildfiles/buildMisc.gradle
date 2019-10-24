@@ -22,13 +22,13 @@ task printTestClasspath(group:project.rootProject.ext.group, description:"print 
 task showBootRunCommand(group:project.rootProject.ext.group, description:"show how to locally run the spring boot app") {
     doLast {
         println "for user: " + System.getProperty('user.name', 'default')
-        println "java -jar build/libs/${project.baseName}-${project.rootProject.ext.version}.jar --spring.profiles.active=<activeProfilesFromSrc/main/resources/application.yml>"
-        println "java -jar build/libs/${project.baseName}-${project.rootProject.ext.version}.jar --spring.profiles.active=<springProfilesFromEnvironments.config>"
+        println "java -jar build/libs/${project.archivesBaseName}-${project.rootProject.ext.version}.jar --spring.profiles.active=<activeProfilesFromSrc/main/resources/application.yml>"
+        println "java -jar build/libs/${project.archivesBaseName}-${project.rootProject.ext.version}.jar --spring.profiles.active=<springProfilesFromEnvironments.config>"
         //localBootRunArgs.each { k, v -> print "-D${k}=${v} " }
         println "e.g.: (property key/values from src/main/resource/application.(yml|properties)"
         println "========= Spring boot run command - START ========="
         def generatedBootRunCmdProps = generateBootRunCmdProps(project, System.getProperty('user.name', 'default'))
-        println "java -jar build/libs/${project.baseName}-${project.rootProject.ext.version}.jar" + generatedBootRunCmdProps
+        println "java -jar build/libs/${project.archivesBaseName}-${project.rootProject.ext.version}.jar" + generatedBootRunCmdProps
         println "========= Spring boot run command - END ==========="
     }
 }
@@ -53,7 +53,7 @@ configure(project) {
 
             return [
                     // Override name properties
-                    name: subproject.baseName,
+                    name: subproject.archivesBaseName,
                     version: subproject.rootProject.ext.version,
 
                     operatingSystem: "${System.properties['os.name']} (${System.properties['os.version']})",

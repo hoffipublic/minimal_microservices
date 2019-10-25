@@ -5,8 +5,8 @@
 // in master build.gradle: apply from: 'buildCf.gradle'
 
 cloudfoundry {
-    application = project.ext.archiveBaseName
-    uri =         project.ext.archiveBaseName+project.getConfigProp('cloudfoundry.baseURL')
+    application = project.name
+    uri =         project.name+project.getConfigProp('cloudfoundry.baseURL')
     target =      "https://api."+project.getConfigProp('cloudfoundry.baseURL')
     organization = project.getConfigProp('cloudfoundry.organization')
     space =        project.getConfigProp('cloudfoundry.space')

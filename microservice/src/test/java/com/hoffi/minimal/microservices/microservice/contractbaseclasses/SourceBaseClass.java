@@ -20,19 +20,17 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.test.context.ActiveProfiles;
 
 @ActiveProfiles({"source", "unscheduled"})
-@SpringBootTest(
-	properties = {
-		"--spring.autoconfigure.exclude=" })
+@SpringBootTest(properties = {"--spring.autoconfigure.exclude="})
 @AutoConfigureCache
 @AutoConfigureMessageVerifier
-//@DirtiesContext // instead of properties = { "--spring.autoconfigure.exclude="}
+// @DirtiesContext // instead of properties = { "--spring.autoconfigure.exclude="}
 public abstract class SourceBaseClass {
 	@Autowired
-    @Qualifier(SourceChannels.OUTPUT)
-    MessageChannel sourceOutputMessageChannel;
+	@Qualifier(SourceChannels.OUTPUT)
+	MessageChannel sourceOutputMessageChannel;
 
 	@Autowired
-    SourceChannels sourceChannels;
+	SourceChannels sourceChannels;
 
 	@Inject
 	MessageVerifier messaging;
@@ -51,12 +49,17 @@ public abstract class SourceBaseClass {
 	}
 
 	protected void methodFromContract() {
-		MessageDTO referenceMessageDTO = DTOTestHelper.getPlainMessageDTO(); // as default constructor is private/protected
-        referenceMessageDTO.seq = "42";
-        referenceMessageDTO.message = "per contract fromSource";
-        referenceMessageDTO.modifications = "";
+		MessageDTO referenceMessageDTO = DTOTestHelper.getPlainMessageDTO(); // as default
+																				// constructor is
+																				// private/protected
+		referenceMessageDTO.seq = "42";
+		referenceMessageDTO.message = "per contract fromSource";
+		referenceMessageDTO.modifications = "";
 
-		sourceChannels.sourceOutput().send(MessageBuilder.withPayload(referenceMessageDTO)
-		.setHeaderIfAbsent("BOOK-NAME", "foo").build());
+		sourceChannels.sourceOutput()
+				.send(MessageBuilder.withPayload(referenceMessageDTO)
+						.setHeaderIfAbsent("baggage_ddd", "testBPDomain")
+						.setHeaderIfAbsent("baggage_bp", "testBProcess")
+						.setHeaderIfAbsent("baggage_bpids", "43,44").build());
 	}
 }

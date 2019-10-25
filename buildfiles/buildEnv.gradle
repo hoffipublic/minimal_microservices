@@ -32,9 +32,9 @@ configure(project) {
                     if (cat.get(project.name).isSet(appKey)) {
                         return cat.get(project.name).get(appKey)
                     }
-                } else if (cat.isSet(project.ext.archiveBaseName)) {
-                    if (cat.get(project.ext.archiveBaseName).isSet(appKey)) {
-                        return cat.get(project.ext.archiveBaseName).get(appKey)
+                } else if (cat.isSet(project.archivesBaseName)) {
+                    if (cat.get(project.archivesBaseName).isSet(appKey)) {
+                        return cat.get(project.archivesBaseName).get(appKey)
                     }
                 }
                 if (cat.isSet(appKey)) {

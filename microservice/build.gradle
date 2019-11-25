@@ -30,13 +30,13 @@ dependencies {
 
     // implementation "io.opentracing.brave:brave-opentracing"
 
-    implementation "io.zipkin.brave:brave:5.8.0"
-    implementation "io.zipkin.brave:brave-instrumentation-http:5.8.0"
-    implementation "io.zipkin.brave:brave-instrumentation-httpclient:5.8.0"
-    implementation "io.zipkin.brave:brave-instrumentation-spring-rabbit:5.8.0"
-    implementation "io.zipkin.brave:brave-instrumentation-spring-web:5.8.0"
-    implementation "io.zipkin.brave:brave-instrumentation-spring-webmvc:5.8.0"
-    implementation "io.zipkin.brave:brave-instrumentation-servlet:5.8.0"
+    implementation "io.zipkin.brave:brave:5.9.1"
+    implementation "io.zipkin.brave:brave-instrumentation-http:5.9.1"
+    implementation "io.zipkin.brave:brave-instrumentation-httpclient:5.9.1"
+    implementation "io.zipkin.brave:brave-instrumentation-spring-rabbit:5.9.1"
+    implementation "io.zipkin.brave:brave-instrumentation-spring-web:5.9.1"
+    implementation "io.zipkin.brave:brave-instrumentation-spring-webmvc:5.9.1"
+    implementation "io.zipkin.brave:brave-instrumentation-servlet:5.9.1"
 	implementation 'org.springframework.cloud:spring-cloud-sleuth-core'+":${vs('springSleuthVersion')}" // zipkin'
 	implementation 'org.springframework.cloud:spring-cloud-sleuth-zipkin'+":${vs('springSleuthVersion')}" // zipkin'
 	implementation 'org.springframework.cloud:spring-cloud-starter-sleuth'+":${vs('springSleuthVersion')}" // zipkin'

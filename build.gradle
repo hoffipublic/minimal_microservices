@@ -15,9 +15,9 @@ buildscript {
         jcenter()
         maven { url 'https://repo.spring.io/plugins-release' }
         maven { url 'https://repo.jenkins-ci.org/public/' } // only if using buildfiles/buildJenkins.gradle
-        maven { url 'https://repo.spring.io/libs-milestone' } // only if using milestone spring stuff
-        maven { url 'https://repo.spring.io/libs-snapshot' } // only if using snapshot spring stuff
-        maven { url 'https://repo.spring.io/libs-snapshot-local' } // only if using snapshot spring stuff
+        // maven { url 'https://repo.spring.io/libs-milestone' } // only if using milestone spring stuff
+        // maven { url 'https://repo.spring.io/libs-snapshot' } // only if using snapshot spring stuff
+        // maven { url 'https://repo.spring.io/libs-snapshot-local' } // only if using snapshot spring stuff
 
     }
     dependencies {
@@ -35,9 +35,9 @@ buildscript {
 }
 
 plugins {
-    id 'com.gorylenko.gradle-git-properties' version "2.1.0" apply false
+    id 'com.gorylenko.gradle-git-properties' version "2.2.0" apply false
     id 'maven-publish' // needed for com.jfrog.atifactory
-    id 'com.jfrog.artifactory' version '4.10.0' // "${artifactoryPluginVersion}"
+    id 'com.jfrog.artifactory' version '4.11.0' // "${artifactoryPluginVersion}"
 }
 apply plugin: 'org.springframework.boot' // only if using milestones, otherwise in plugins { } section
 

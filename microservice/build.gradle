@@ -19,7 +19,6 @@ dependencies {
     implementation "org.springframework.cloud:spring-cloud-starter"
 
     implementation 'org.springframework.boot:spring-boot-starter-aop'
-    //implementation "org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j:${vs('springCloudCircuitbreakerSnapshotVersion')}"
     // implementation "io.github.resilience4j:resilience4j-spring-boot2:${v('resilience4jVersion')}"
     implementation "io.github.resilience4j:resilience4j-spring-cloud2:${v('resilience4jVersion')}"
     implementation "io.github.resilience4j:resilience4j-circuitbreaker:${v('resilience4jVersion')}"
@@ -28,43 +27,19 @@ dependencies {
     implementation "io.github.resilience4j:resilience4j-micrometer:${v('resilience4jVersion')}"
     implementation "io.github.resilience4j:resilience4j-prometheus:${v('resilience4jVersion')}"
 
-    // implementation "io.opentracing.brave:brave-opentracing"
-
-    implementation "io.zipkin.brave:brave:5.9.1"
-    implementation "io.zipkin.brave:brave-instrumentation-http:5.9.1"
-    implementation "io.zipkin.brave:brave-instrumentation-httpclient:5.9.1"
-    implementation "io.zipkin.brave:brave-instrumentation-spring-rabbit:5.9.1"
-    implementation "io.zipkin.brave:brave-instrumentation-spring-web:5.9.1"
-    implementation "io.zipkin.brave:brave-instrumentation-spring-webmvc:5.9.1"
-    implementation "io.zipkin.brave:brave-instrumentation-servlet:5.9.1"
-	implementation 'org.springframework.cloud:spring-cloud-sleuth-core'+":${vs('springSleuthVersion')}" // zipkin'
-	implementation 'org.springframework.cloud:spring-cloud-sleuth-zipkin'+":${vs('springSleuthVersion')}" // zipkin'
-	implementation 'org.springframework.cloud:spring-cloud-starter-sleuth'+":${vs('springSleuthVersion')}" // zipkin'
-	implementation 'org.springframework.cloud:spring-cloud-starter-zipkin'+":${vs('springSleuthVersion')}" // zipkin'
-
     runtimeOnly "io.micrometer:micrometer-registry-prometheus:${v('micrometerRegistryPrometheusVersion')}"
 
-    // implementation "io.zipkin.reporter2:zipkin-sender-amqp-client:2.10.3"
-    implementation "io.zipkin.reporter2:zipkin-reporter:2.10.3"
-
-
     // // implementation 'org.springframework.cloud:spring-cloud-starter-sleuth' // if using without zipkin
-    // implementation 'org.springframework.cloud:spring-cloud-starter-zipkin'
-    // implementation 'org.springframework.cloud:spring-cloud-sleuth-zipkin'
-    // // // jaeger might be a replacement for sleuth and zipkin (obove) as soon as they support traceContext within slf4j MDC
-    // // implementation "io.jaegertracing:jaeger-client:${v('jaegerClientVersion')}"
-    // // implementation "io.opentracing.contrib:opentracing-spring-jaeger-cloud-starter:${v('springJaegerCloud')}"
-    implementation "io.zipkin.brave:brave-instrumentation-spring-rabbit"
+    implementation 'org.springframework.cloud:spring-cloud-starter-zipkin'
+    implementation 'org.springframework.cloud:spring-cloud-sleuth-zipkin'
     
-    //implementation "org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j:${versions.latest.snapshots['springCloudCircuitbreakerSnapshotVersion']}"
-
 
     implementation 'org.springframework.cloud:spring-cloud-stream'
     //implemenentation "org.springframework.cloud:spring-cloud-starter-stream-rabbit"
     implementation 'org.springframework.amqp:spring-rabbit'
+    implementation "io.zipkin.brave:brave-instrumentation-spring-rabbit"
     implementation 'org.springframework.cloud:spring-cloud-stream-binder-rabbit'
 
-    // implementation 'org.springframework.cloud:spring-cloud-starter-netflix-hystrix'
 
     // spring-boot-starter-test already includes the following provided libraries
     // AssertJ
@@ -80,9 +55,9 @@ dependencies {
     testImplementation('org.springframework.cloud:spring-cloud-stream-test-support') // messaging test support for spring-cloud-stream
     // spring-cloud-contract
     // API implementor (procucer) side
-    testImplementation("org.springframework.cloud:spring-cloud-starter-contract-verifier:${vs('springCloudContractVersion')}")
+    testImplementation("org.springframework.cloud:spring-cloud-starter-contract-verifier")
     // API consumer (client) side
-    testImplementation("org.springframework.cloud:spring-cloud-starter-contract-stub-runner:${vs('springCloudContractVersion')}")
+    testImplementation("org.springframework.cloud:spring-cloud-starter-contract-stub-runner")
 
     testImplementation(
     // localGroovy(), // use gradles internal version of groovy

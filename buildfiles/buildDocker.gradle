@@ -8,14 +8,13 @@ ext {
     
 docker {
     springBootApplication {
-        baseImage = 'openjdk:8-alpine'
+        baseImage = 'openjdk:11-alpine'
         ports = ["${getSpringAppconfig('server.port')}"]
-        tag = project.ext.dockerTag
-        registryCredentials {
-            url = project.ext.dockerRegistryUrl
-            username = project.ext.dockerRegistryUser
-            password = System.env.DOCKERHUB_PASS
-        }
+    }
+    registryCredentials {
+        url = project.ext.dockerRegistryUrl
+        username = project.ext.dockerRegistryUser
+        password = System.env.DOCKERHUB_PASS
     }
 }
 

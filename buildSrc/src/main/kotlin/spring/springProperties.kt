@@ -1,0 +1,1 @@
+../../../../../../gradle_dependencies/buildSrc/src/main/kotlin/spring/springProperties.kt

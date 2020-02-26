@@ -1,0 +1,1 @@
+../../../../../../gradle_dependencies/buildSrc/src/main/kotlin/v/dependencies.kt

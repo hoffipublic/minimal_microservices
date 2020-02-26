@@ -30,6 +30,7 @@ apply(from = "buildfiles/buildLifecycleHooks.gradle.kts")
 group = "demo"
 // versions are defined by mapping of git branches to versions in ./buildSrc/src/main/kotlin/v/ownVersion.kt
 version = v.version
+apply(from = "buildExt.gradle.kts")
 val artifactName by extra { project.name }
 val archivesBaseName by extra { project.name }
 

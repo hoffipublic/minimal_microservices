@@ -6,15 +6,21 @@ gradle.afterProject {
         println("Evaluation of $project succeeded")
     }
 }
-gradle.taskGraph.beforeTask {
-    doFirst {
-        if(!this.state.getNoSource() || this.state.getUpToDate()) {
-            println(">executing ... ")
-        }
-    }
-}
+//gradle.taskGraph.beforeTask {
+//    doFirst {
+//        if(!this.state.getNoSource() || this.state.getUpToDate()) {
+//            println(">... ")
+//        }
+//    }
+//}
 gradle.taskGraph.afterTask {
     if(!this.state.getSkipped()) {
-        println("<ready.")
+        var pname = project.name
+        if(pname == project.rootProject.name) {
+            pname = ""
+        } else {
+            pname = ":${pname}"
+        }
+        println("< Task ${pname}:${this.name} finished.")
     }
 }

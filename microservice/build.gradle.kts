@@ -5,10 +5,14 @@ version = project.rootProject.version
 val artifactName by extra { "minimal_microservice" }
 val archivesBaseName by extra { "minimal_microservice" }
 
+apply(from = project.rootProject.projectDir.toString() + "/buildfiles/buildMisc.gradle.kts")
+
 spring.loadSpringAppConfigs(project.name,
                             projectDir.toString() + "/src/main/resources/application.yml",
                             projectDir.toString() + "/src/main/resources/bootstrap.yml",
                             project.rootProject.projectDir.toString() + "/environments.yml")
+println("")
+println("some spring config properties examples:")
 println("application.yml property 'spring.sleuth.baggage-keys' = '${spring.getSpringConfig(project.name, "spring.sleuth.baggage-keys")}'")
 println("environment.artifactory.url = '${spring.getSpringConfig(project.name, "environment.artifactory.url")}'")
 
@@ -70,16 +74,10 @@ dependencies {
 }
 
 apply(plugin = "maven-publish")
-apply(plugin = "com.jfrog.artifactory")
 //apply(plugin = "com.terrafolio.jenkins")
 
-// apply(plugin = "cloudfoundry")
-// //apply plugin: "docker"
-// apply(from = project.rootProject.projectDir.toString() + "/buildfiles/buildCf.gradle")  // showCfTargetAndLogin, showCfCmds and generateCfCmds
 // //apply(from = project.rootProject.projectDir.toString() + "/buildfiles/buildDocker.gradle")
-// apply(from = project.rootProject.projectDir.toString() + "/buildfiles/buildArtifactory.gradle")
 // //apply(from = project.rootProject.projectDir.toString() + "/buildfiles/buildJenkins.gradle")
-apply(from = project.rootProject.projectDir.toString() + "/buildfiles/buildMisc.gradle.kts") // showBootRunCommand
 // apply(from = project.rootProject.projectDir.toString() + "/buildfiles/buildVscode.gradle")
 
 // publishing {
@@ -150,25 +148,9 @@ val compileJava by tasks.existing {
     dependsOn(processResources)
 }
 
-// compileJava {
-tasks.withType<JavaCompile> {
-    doFirst {
-        // options.compilerArgs += ["--add-modules", "java.xml.bind"]
-        println("Gradle version: " + project.getGradle().getGradleVersion())
-        // println("Groovy version: " + GroovySystem.getVersion())
-        println("javac  version: " + org.gradle.internal.jvm.Jvm.current() + " with compiler args: " + options.compilerArgs)
-        println("boot   version: " + v.springBootLatest)
-        println("cloud  version: " + v.springCloudLatest)
-        println("")
-    }
-}
-//compileTestJava {
-//    // options.compilerArgs += ["--add-modules", "java.xml.bind"]
-//  println 'compileTestJava with version ' + org.gradle.internal.jvm.Jvm.current() + ' with compiler args: ' + options.compilerArgs
-//}
-
-// springBoot {
-configure<org.springframework.boot.gradle.dsl.SpringBootExtension> {
+//configure<SpringBoot> { // have to use this form, if imported by apply(plugin = "") instead of plugins { id( "" ) }
+//configure<org.springframework.boot.gradle.dsl.SpringBootExtension> {
+springBoot {
     mainClassName = "com.hoffi.minimal.microservices.microservice.MicroserviceApplication"
 
     // This statement tells the Gradle Spring Boot plugin to generate a file
@@ -178,7 +160,7 @@ configure<org.springframework.boot.gradle.dsl.SpringBootExtension> {
     // buildInfo {
     //     properties {
     //         // Generate extra build info.
-    //         additional = additionalBuildInfo(project) // from buildfiles/buildMisc.gradle
+    //         additional = additionalBuildInfo(project) // Map<String, String>
     //     }
     // }
 }
@@ -192,14 +174,16 @@ tasks {
         // here so that also spring-cloud-contract -stubs.jars are copied to root
         val copyLibsToRootProject by rootProject.tasks.existing
         val branchVersionsPrint by rootProject.tasks.existing
-        val springBootVersionsPrint by rootProject.tasks.existing
-        finalizedBy(copyLibsToRootProject, branchVersionsPrint, springBootVersionsPrint)
+        val versionsPrint by project.tasks.existing
+        finalizedBy(copyLibsToRootProject, branchVersionsPrint, versionsPrint)
     }
 
     // bootJar {
     withType<org.springframework.boot.gradle.tasks.bundling.BootJar> {
         launchScript() // make the fat.jar executable (e.g. for sudo ln -s /var/myapp/myapp.jar /etc/init.d/myapp)
         // versions are defined by mapping of git branches to versions in ./buildSrc/src/main/kotlin/v/ownVersion.kt
+        val archivesBaseName: String by project.extra
+        archiveBaseName.set(archivesBaseName)
         manifest {
             attributes["Implementation-Title"] = project.name
             attributes["Implementation-Version"] = v.version

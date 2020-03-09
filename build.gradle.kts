@@ -24,6 +24,7 @@ val archivesBaseName by extra { project.name }
 
 
 //apply(from = project.rootProject.projectDir.toString() + "/buildfiles/buildDocs.gradle")
+apply(from = project.rootProject.projectDir.toString() + "/buildfiles/buildCheckForUpdates.gradle.kts")
 
 println("\n====================================================================================================")
 println("RootProject: ${project.rootProject.group}:${artifactName}:${project.rootProject.version}" + c.lastThreeDirsOf(projectDir))

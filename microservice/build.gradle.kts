@@ -7,10 +7,12 @@ val archivesBaseName by extra { "minimal_microservice" }
 
 apply(from = project.rootProject.projectDir.toString() + "/buildfiles/buildMisc.gradle.kts")
 
-spring.loadSpringAppConfigs(project.name,
-                            projectDir.toString() + "/src/main/resources/application.yml",
-                            projectDir.toString() + "/src/main/resources/bootstrap.yml",
-                            project.rootProject.projectDir.toString() + "/environments.yml")
+spring.loadSpringAppConfigs(
+        project.name,
+        projectDir.toString() + "/src/main/resources/application.yml",
+        projectDir.toString() + "/src/main/resources/bootstrap.yml",
+        project.rootProject.projectDir.toString() + "/environments.yml"
+)
 println("")
 println("some spring config properties examples:")
 println("application.yml property 'spring.sleuth.baggage-keys' = '${spring.getSpringConfig(project.name, "spring.sleuth.baggage-keys")}'")
@@ -33,7 +35,7 @@ dependencies {
     implementation("io.github.resilience4j:resilience4j-micrometer:${v.resilience4jLatest}")
     implementation("io.github.resilience4j:resilience4j-prometheus:${v.resilience4jLatest}")
 
-    runtimeOnly("io.micrometer:micrometer-registry-prometheus:${v.micrometerRegistryPrometheusLatest}")
+    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
 
     // // implementation("org.springframework.cloud:spring-cloud-starter-sleuth' // if using without zipki")
     implementation("org.springframework.cloud:spring-cloud-starter-zipkin")

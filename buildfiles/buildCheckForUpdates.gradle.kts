@@ -1,4 +1,4 @@
-tasks.register("checkUpdates") {
+tasks.register("checkForUpdates") {
     group = "misc"
     description = "check for new updates to dependancy jars"
     doLast {
@@ -6,7 +6,8 @@ tasks.register("checkUpdates") {
         println("RELEASEs:")
         for(d in v.Latest.Release.values()) {
             if(d.repo == null || d.repo == "") continue
-            val text = java.net.URL("${d.repo}/${d.path}/${d.group.replace('.', '/')}/${d.artifact}/maven-metadata.xml").readText()
+            val url = "${d.repo}/${d.path}/${d.group.replace('.', '/')}/${d.artifact}/"
+            val text = java.net.URL("${url}maven-metadata.xml").readText()
             val regexLatest = Regex("<latest>(.*)</latest>", RegexOption.MULTILINE)
             val regexRelease = Regex("<release>(.*)</release>", RegexOption.MULTILINE)
             val regexVersions = Regex(".*<version>(.*)</version>", setOf(RegexOption.MULTILINE, RegexOption.UNIX_LINES))
@@ -28,13 +29,15 @@ tasks.register("checkUpdates") {
             } else {
                 print(String.format(" latest: %-19s release: %-19s lastVersionRef: %-19s", latest.take(19), release.take(19), lastVersion))
             }
+            print("    ${url}")
             println("")
         }
         println("")
         println("MILESTONEs:")
         for(d in v.Latest.Milestone.values()) {
             if(d.repo == null || d.repo == "") continue
-            val text = java.net.URL("${d.repo}/${d.path}/${d.group.replace('.', '/')}/${d.artifact}/maven-metadata.xml").readText()
+            val url = "${d.repo}/${d.path}/${d.group.replace('.', '/')}/${d.artifact}/"
+            val text = java.net.URL("${url}maven-metadata.xml").readText()
             val regexLatest = Regex("<latest>(.*)</latest>", RegexOption.MULTILINE)
             val regexRelease = Regex("<release>(.*)</release>", RegexOption.MULTILINE)
             val regexVersions = Regex(".*<version>(.*)</version>", setOf(RegexOption.MULTILINE, RegexOption.UNIX_LINES))
@@ -56,6 +59,7 @@ tasks.register("checkUpdates") {
             } else {
                 print(String.format(" latest: %-19s release: %-19s lastVersionRef: %-19s", latest.take(19), release.take(19), lastVersion))
             }
+            print("    ${url}")
             println("")
         }
         println("")
@@ -63,7 +67,8 @@ tasks.register("checkUpdates") {
         for(d in v.Latest.Plugin.values()) {
             if(d.repo == null || d.repo == "") continue
             val regexLatest = Regex("Version (.*) \\(latest\\)", setOf(RegexOption.MULTILINE, RegexOption.UNIX_LINES))
-            val text = java.net.URL("${d.repo}/${d.path}/${d.artifact}").readText()
+            val url = "${d.repo}/${d.path}/${d.artifact}"
+            val text = java.net.URL(url).readText()
             // println(text)
             var latestMatchResult = regexLatest.find(text)
             var latest = "not found"
@@ -74,7 +79,15 @@ tasks.register("checkUpdates") {
             } else {
                 print(String.format(" latest: %-19s", latest))
             }
+            print("    ${url}")
             println("")
         }
     }
+}
+
+tasks.register("checkVersions") {
+    group = "misc"
+    description = "alias for checkForUpdates"
+    val checkForUpdates by tasks.existing
+    dependsOn(checkForUpdates)
 }

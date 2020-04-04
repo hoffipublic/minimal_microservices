@@ -14,15 +14,15 @@ pluginManagement {
         maven("https://repo.spring.io/plugins-release")
         jcenter()
     }
-//    resolutionStrategy {
-//        eachPlugin {
-//            if (requested.id.id == "org.springframework.boot") {
-//                val springBootVersion = "2.3.0.M2"
-//                println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-//                println("./settings.gradle.kts resoutionStrategy { \"org.springframework.boot\" } ==> spring-boot-gradle-plugin:${springBootVersion}")
-//                println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-//                useModule("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
-//            }
-//        }
-//    }
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == "org.springframework.boot") {
+                val springBootVersion = "2.3.0.M4"
+                println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+                println("./settings.gradle.kts resoutionStrategy { \"org.springframework.boot\" } ==> spring-boot-gradle-plugin:${springBootVersion}")
+                println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+                useModule("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+            }
+        }
+    }
 }

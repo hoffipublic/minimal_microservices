@@ -1,0 +1,26 @@
+#! generate via $ ./gradlew -Penv=<env> generateK8s
+
+#@ load("@ytt:data", "data")
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name:  #@ "{}-{}".format(data.values.name, "ingress")
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/rewrite-target: /greet
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /greet
+        backend:
+          serviceName: #@ "{}-{}".format(data.values.name, "service")
+          servicePort: #@ data.values.http_svc_port
+  - host: greet.mycluster.local
+    http:
+      paths:
+      - path: /greet
+        backend:
+          serviceName: #@ "{}-{}".format(data.values.name, "service")
+          servicePort: #@ data.values.http_svc_port

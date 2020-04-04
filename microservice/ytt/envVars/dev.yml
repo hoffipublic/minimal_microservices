@@ -1,0 +1,9 @@
+#@data/values
+#@overlay/match-child-defaults missing_ok=True
+---
+dummy: nothing
+
+depl_replicas: 1
+
+http_svc_port: 8080
+https_svc_port: 8443

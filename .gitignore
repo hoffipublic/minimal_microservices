@@ -15,12 +15,12 @@ logback.out.xml
 *.iws
 derby.log
 log.roo
-.sts4-cache/
 # 
 activemq-data/
 .sass-cache/
 .codekit-config.json
 .idea
+.vscode/
 .springBeans
 /spring_loaded/**
 .sql
@@ -30,8 +30,7 @@ log/*
 tmp/*
 temp/*
 backup/*
-generated/*
-*/generated/*
+**/generated/*
 bak/*
 .svn
 
@@ -70,3 +69,4 @@ Thumbs.db
 *.DS_Store
 .Spotlight-V100
 .Trashes
+.sts4-cache/

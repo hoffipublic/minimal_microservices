@@ -1,0 +1,16 @@
+#! generate via $ ./gradlew -Penv=<env> generateK8s
+
+#@ load("@ytt:data", "data")
+#@ if/end data.values.svc_enabled:
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: #@ "{}-{}".format(data.values.name, "service")
+spec:
+  selector: #@ data.values.svc_selector
+  ports:
+  - name: http
+    port: #@ data.values.http_svc_port
+    targetPort: #@ data.values.http_container_port
+  type: LoadBalancer

@@ -1,3 +1,6 @@
+//
+// in a multi-project build, this has to be applied from in the build.gradle.kts of the subproject
+//
 // configurations of interest might be:
 // compileClasspath
 // runtimeClasspath

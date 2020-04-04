@@ -1,0 +1,23 @@
+#! generate via $ ./gradlew -Penv=<env> generateK8s
+
+#@ load("@ytt:data", "data")
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: #@ "{}-{}".format(data.values.name, "deployment")
+  labels: #@ data.values.depl_labels
+spec:
+  replicas: #@ data.values.depl_replicas
+  selector:
+    matchLabels: #@ data.values.depl_matchLabels
+  template:
+    metadata:
+      labels: #@ data.values.depl_template_labels
+    spec:
+      containers:
+        - name: #@ "{}-{}".format(data.values.name, "container")
+          image: #@ data.values.depl_container_image
+          ports:
+            - name: http
+              containerPort: #@ data.values.http_container_port

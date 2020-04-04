@@ -1,1 +1,77 @@
-../gradle_dependencies/environments.yml
+environment:
+  git:
+    origin: "git@gitlab.com:hoffi_minimal/minimal_REST.git"
+    remote: "origin"
+  artifactory:
+    url: "http://localhost:8082/artifactory"
+    user: systemProp.artifactoryAdminUser
+    pass: systemProp.artifactoryAdminPass
+  jenkins:
+    url: "http://localhost:8095/"
+    folder: "spring_cloud_stream"
+    user: systemProp.defaultAdminUser
+    pass: systemProp.defaultAdminPass
+  docker:
+    registry: "dirks-mbp-6:5000"
+  cloudfoundry:
+    target: "https://api.local.pcfdev.io"
+    baseURL: "local.pcfdev.io"
+    organization: "pcfdev-org"
+    space: "pcfdev-space"
+    trustSelfSignedCerts: true
+    username: systemProp.defaultAdminUser
+    password: systemProp.defaultAdminPass
+  application:
+    instances: 2
+    memory: 256
+    diskQuota: 256
+  services:
+    serviceMap:
+      rabbit:  [name:'RabbitMQ',  service:'p-rabbitmq',  plan:'standard']
+      redis:   [name:'Redis',     service:'p-redis',     plan:'shared-vm']
+      mysql:   [name:'MySql',     service:'p-mysql',     plan:'512mb']
+      configserver: [name:'ConfigServer', service:'p-config-server',    plan:'standard']
+      registry:  [name:'ServiceRegistry', service:'p-service-registry', plan:'standard']
+      circuitbreaker: [name:'CircuitBreaker', service:'p-circuit-breaker-dashboard', plan:'standard']
+    bindings: []
+
+---
+spring:
+  profiles: local
+environment:
+  git:
+    origin: "git@gitlab.com:hoffi_minimal/minimal_REST.git"
+    remote: "origin"
+  artifactory:
+    url: "http://192.168.0.2:8081/artifactory"
+    user: systemProp.defaultAdminUser
+    pass: systemProp.defaultAdminPass
+  jenkins:
+    url: "http://localhost:8095/"
+    folder: "spring_cloud_stream"
+    user: systemProp.defaultAdminUser
+    pass: systemProp.defaultAdminPass
+  docker:
+    registry: "dirks-mbp-6:5000"
+  cloudfoundry:
+    target: "https://api.local.pcfdev.io"
+    baseURL: "local.pcfdev.io"
+    organization: "pcfdev-org"
+    space: "pcfdev-space"
+    trustSelfSignedCerts: true
+    username: systemProp.defaultAdminUser
+    password: systemProp.defaultAdminPass
+  application:
+    instances: 2
+    memory: 256
+    diskQuota: 256
+  services:
+    serviceMap:
+      rabbit:  [name:'RabbitMQ',  service:'p-rabbitmq',  plan:'standard']
+      redis:   [name:'Redis',     service:'p-redis',     plan:'shared-vm']
+      mysql:   [name:'MySql',     service:'p-mysql',     plan:'512mb']
+      configserver: [name:'ConfigServer', service:'p-config-server',    plan:'standard']
+      registry:  [name:'ServiceRegistry', service:'p-service-registry', plan:'standard']
+      circuitbreaker: [name:'CircuitBreaker', service:'p-circuit-breaker-dashboard', plan:'standard']
+    bindings: []
+

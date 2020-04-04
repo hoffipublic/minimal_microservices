@@ -76,6 +76,7 @@ dependencies {
 }
 
 apply(plugin = "maven-publish")
+apply(from = project.rootProject.projectDir.toString() + "/buildfiles/buildK8s.gradle.kts")
 //apply(plugin = "com.terrafolio.jenkins")
 
 // //apply(from = project.rootProject.projectDir.toString() + "/buildfiles/buildDocker.gradle")

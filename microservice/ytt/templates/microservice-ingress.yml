@@ -7,8 +7,9 @@ kind: Ingress
 metadata:
   name:  #@ "{}-{}".format(data.values.name, "ingress")
   annotations:
-    kubernetes.io/ingress.class: traefik
-    traefik.ingress.kubernetes.io/rewrite-target: /greet
+    kubernetes.io/ingress.class: #@ data.values.ingress.controller
+    #@yaml/text-templated-strings
+    (@= data.values.ingress.controller @).ingress.kubernetes.io/rewrite-target: #@ data.values.ingress.rewrite-target
 spec:
   rules:
   - http:

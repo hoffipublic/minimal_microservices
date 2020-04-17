@@ -12,7 +12,7 @@ environment:
     user: systemProp.defaultAdminUser
     pass: systemProp.defaultAdminPass
   docker:
-    registry: "dirks-mbp-6:5000"
+    registry: ""
   cloudfoundry:
     target: "https://api.local.pcfdev.io"
     baseURL: "local.pcfdev.io"
@@ -52,7 +52,7 @@ environment:
     user: systemProp.defaultAdminUser
     pass: systemProp.defaultAdminPass
   docker:
-    registry: "dirks-mbp-6:5000"
+    registry: "registry.hoffimuc.com"
   cloudfoundry:
     target: "https://api.local.pcfdev.io"
     baseURL: "local.pcfdev.io"

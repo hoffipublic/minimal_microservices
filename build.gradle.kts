@@ -1,7 +1,3 @@
-import org.gradle.internal.logging.text.StyledTextOutput
-import org.gradle.internal.logging.text.StyledTextOutputFactory
-import org.gradle.internal.logging.text.StyledTextOutput.Style
-
 plugins {
     id("eclipse")
     id("idea")
@@ -9,6 +5,7 @@ plugins {
     // id("org.springframework.boot") apply false // if using milestone or snapshots use this line instead of above and configure version in ./settings.gradle.kts
     id("org.springframework.cloud.contract") version "${v.springCloudContractLatest}" apply false
     id("com.gorylenko.gradle-git-properties") version "${v.gitPropertiesPlugin}" apply false
+    id("com.google.cloud.tools.jib") version "${v.jibPlugin}" apply false
     // id("maven-publish") // needed for com.jfrog.artifactory
 }
 
@@ -19,8 +16,11 @@ group = "demo"
 // versions are defined by mapping of git branches to versions in ./buildSrc/src/main/kotlin/v/ownVersion.kt
 version = v.version
 apply(from = "buildExt.gradle.kts")
-val artifactName by extra { project.name }
-val archivesBaseName by extra { project.name }
+val env: String by extra
+val artifactName: String by extra
+val archivesBaseName: String by extra
+val repo: String by extra
+val repoHttps: String by extra
 
 
 //apply(from = project.rootProject.projectDir.toString() + "/buildfiles/buildDocs.gradle")
@@ -28,6 +28,7 @@ apply(from = project.rootProject.projectDir.toString() + "/buildfiles/buildCheck
 
 println("\n====================================================================================================")
 println("RootProject: ${project.rootProject.group}:${artifactName}:${project.rootProject.version}" + c.lastThreeDirsOf(projectDir))
+println("target env: ${env}")
 println("====================================================================================================")
 
 gradle.projectsEvaluated {
@@ -45,6 +46,7 @@ subprojects {
     apply(plugin = "org.springframework.boot")
     apply(plugin = "org.springframework.cloud.contract")
     apply(plugin = "com.gorylenko.gradle-git-properties")
+    apply(plugin = "com.google.cloud.tools.jib")
 
     repositories {
         mavenLocal()

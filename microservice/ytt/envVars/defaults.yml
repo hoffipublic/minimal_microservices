@@ -12,3 +12,7 @@ http_svc_port: 80
 https_port: 443
 https_container_port: 8443
 https_svc_port: 443
+
+ingress:
+  controller: traefik
+  rewrite-target: /greet

@@ -1,22 +1,25 @@
 import org.springframework.cloud.contract.verifier.config.TestFramework
+import com.google.cloud.tools.jib.gradle.JibExtension
 
 group = project.rootProject.group
 version = project.rootProject.version
+val env: String by project.rootProject.extra
 val artifactName by extra { "minimal_microservice" }
 val archivesBaseName by extra { "minimal_microservice" }
 
 apply(from = project.rootProject.projectDir.toString() + "/buildfiles/buildMisc.gradle.kts")
 
-spring.loadSpringAppConfigs(
-        project.name,
+spring.loadSpringAppConfigs(project.name,
         projectDir.toString() + "/src/main/resources/application.yml",
-        projectDir.toString() + "/src/main/resources/bootstrap.yml",
+        projectDir.toString() + "/src/main/resources/bootstrap.yml"
+)
+spring.loadEnvConfigs(env, project.name,
         project.rootProject.projectDir.toString() + "/environments.yml"
 )
 println("")
 println("some spring config properties examples:")
-println("application.yml property 'spring.sleuth.baggage-keys' = '${spring.getSpringConfig(project.name, "spring.sleuth.baggage-keys")}'")
-println("environment.artifactory.url = '${spring.getSpringConfig(project.name, "environment.artifactory.url")}'")
+println("application.yml property 'spring.sleuth.baggage-keys' = '${spring.getSpringAppConfig(project.name, "spring.sleuth.baggage-keys")}'")
+println("environment.artifactory.url = '${spring.getEnvConfig(project.name, "environment.artifactory.url")}'")
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
@@ -183,7 +186,7 @@ tasks {
 
     // bootJar {
     withType<org.springframework.boot.gradle.tasks.bundling.BootJar> {
-        launchScript() // make the fat.jar executable (e.g. for sudo ln -s /var/myapp/myapp.jar /etc/init.d/myapp)
+        // launchScript() // make the fat.jar executable (e.g. for sudo ln -s /var/myapp/myapp.jar /etc/init.d/myapp)
         // versions are defined by mapping of git branches to versions in ./buildSrc/src/main/kotlin/v/ownVersion.kt
         val archivesBaseName: String by project.extra
         archiveBaseName.set(archivesBaseName)
@@ -243,6 +246,16 @@ tasks {
         })
     }
 
+    withType<org.springframework.boot.gradle.tasks.bundling.BootBuildImage> {
+        builder = "cloudfoundry/cnb:bionic"
+        val archivesBaseName: String by project.extra
+        var dockerRegistry = "${spring.getEnvConfig(project.name, "environment.docker.registry")}"
+        if (dockerRegistry.length > 0) {
+            dockerRegistry += "/"
+        }
+        imageName = dockerRegistry + archivesBaseName.replace('_', '-')
+    }
+
     // clean {
     withType<Delete> {
         doFirst {
@@ -250,6 +263,32 @@ tasks {
         }
     }
 }
+
+// withType<com.google.cloud.tools.jib.gradle.JibTask> {
+configure<JibExtension> {
+        from {
+            image = "openjdk:11.0-jre-slim"
+        }
+        to {
+            var dockerRegistry = "${spring.getEnvConfig(project.name, "environment.docker.registry")}"
+            if (dockerRegistry.length > 0) {
+                dockerRegistry += "/"
+            }
+            image = "${dockerRegistry}${archivesBaseName.replace('_', '-')}:${v.versionNumber}"
+            credHelper = "osxkeychain"
+            tags = kotlin.collections.setOf("latest")
+        }
+        container {
+            labels = kotlin.collections.mapOf("maintainer" to "Dirk.Hoffmann@dell.com", "key2" to "value2")
+            format = com.google.cloud.tools.jib.api.ImageFormat.OCI
+            //args = listOf("some", "args")
+            ports = kotlin.collections.listOf("8080")
+            //jvmFlags = listOf("-Xms512m", "-Xdebug", "-Xmy:flag=jib-rules")
+            mainClass = "demo.MinimalApplication"
+            creationTime = "USE_CURRENT_TIMESTAMP"
+        }
+}
+
 // bootRun { systemProperties = System.properties } // ensure Gradle passes command line arguments to the JVM
 
 

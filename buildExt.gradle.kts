@@ -6,5 +6,5 @@ val repoHttps by extra("https://gitlab.com/hoffi_minimal/minimal_microservices")
 // override on commandline by $ ./gradlew -Penv=yourenvname
 val env by extra {
     try { project.property("env") }
-    catch(ex: groovy.lang.MissingPropertyException) { "local" }
+    catch(ex: groovy.lang.MissingPropertyException) { "default" }
 }

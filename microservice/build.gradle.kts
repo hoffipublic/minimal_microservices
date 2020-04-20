@@ -253,7 +253,7 @@ tasks {
         if (dockerRegistry.length > 0) {
             dockerRegistry += "/"
         }
-        imageName = dockerRegistry + archivesBaseName.replace('_', '-')
+        imageName = dockerRegistry + archivesBaseName.replace('_', '-')  + ":" + v.versionNumber
     }
 
     // clean {

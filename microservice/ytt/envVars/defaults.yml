@@ -15,4 +15,4 @@ https_svc_port: 443
 
 ingress:
   controller: traefik
-  rewrite-target: /greet
+  rewrite_target: /greet

@@ -3,6 +3,15 @@ spring:
     name: minimal_microservice
   banner:
     location: classpath:/banner.txt
+#  cloud:
+#    config:
+#    serviceUrl:
+#      # the variable vcap.services.configService.credentials.uri will be defined inside cloud foundry
+#      # if you have a user-provided-service named 'configService' with a property named uri which points to your config server
+#      # e.g. via # cf cups configService -p '{"uri":"http://configserver.throwback.pepsi.cf-app.com"}'
+#      # if there is no env var vcap... then it will default to localhost port 8888 (default config server port)
+#      uri: ${vcap.services.configService.credentials.uri:http://localhost:8888}
+#      failFast: false # if true fail (exit) if the config server is not reached on startup
 
 server:
   port: ${vcap.application.port:8080}

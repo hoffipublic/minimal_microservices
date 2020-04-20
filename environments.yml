@@ -12,7 +12,7 @@ environment:
     user: systemProp.defaultAdminUser
     pass: systemProp.defaultAdminPass
   docker:
-    registry: ""
+    registry: "registry.gitlab.com/hoffisregistry/scratch"
   cloudfoundry:
     target: "https://api.local.pcfdev.io"
     baseURL: "local.pcfdev.io"
@@ -74,4 +74,11 @@ environment:
       registry:  [name:'ServiceRegistry', service:'p-service-registry', plan:'standard']
       circuitbreaker: [name:'CircuitBreaker', service:'p-circuit-breaker-dashboard', plan:'standard']
     bindings: []
+
+---
+spring:
+  profiles: localk8s
+environment:
+  docker:
+    registry: "docker-registry.svc.registry-ns.local.cluster:5000"
 

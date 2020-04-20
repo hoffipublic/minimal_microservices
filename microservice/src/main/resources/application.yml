@@ -1,7 +1,7 @@
+---
 logging:
   level:
     #ROOT: DEBUG
-    org.springframework.test: DEBUG
     org.springframework.boot.context.config.ConfigFileApplicationListener: DEBUG
     #org.springframework.cloud.sleuth: DEBUG
     brave: DEBUG

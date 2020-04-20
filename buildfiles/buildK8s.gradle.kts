@@ -33,6 +33,7 @@ tasks.register("generateK8s") {
             depl_template_labels:
               appname: ${projectK8sName}
             depl_container_image: ${projectK8sName}:${v.versionNumber}
+            spring_profiles_active: ${spring.getSpringActiveProfiles(project.name)}
             docker_registry: ${dockerRegistry}
 
             svc_enabled: true
@@ -42,7 +43,11 @@ tasks.register("generateK8s") {
 
         val yttTemplatesDirname = "${project.projectDir}/ytt/templates"
         val yttEnvVarsDefaultsFilename = "${project.projectDir}/ytt/envVars/defaults.yml"
-        val yttEnvVarsFilename = "${project.projectDir}/ytt/envVars/${env}.yml"
+        var yttEnvVarsFilename = "${project.projectDir}/ytt/envVars/${env}.yml"
+        if( ! File(yttEnvVarsFilename).exists()) {
+            yttEnvVarsFilename = "${project.projectDir}/ytt/envVars/default.yml"
+            println("!!! did not find ./ytt/envVars/${env}.yml !!! taking ./ytt/envVars/default.yml instead")
+        }
         val destDirName = "${project.projectDir}/generated"
         val destDirGeneratedDataDirname = "${project.projectDir}/ytt/generated"
         File(destDirName).mkdir()

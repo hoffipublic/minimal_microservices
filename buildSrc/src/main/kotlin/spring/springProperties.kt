@@ -48,6 +48,15 @@ object SpringConfigStore {
         return config
     }
 
+    fun getSpringActiveProfiles(projectName: String): LinkedHashSet<String> {
+        var config :ProjectConfig? = springAppConfigsByProjectName[projectName]
+        if (config == null) {
+            throw GradleException("no ${ConfType.APP.logText}s read by gradle (sub)project ${projectName}")
+        }
+        return config.profilesActive
+    }
+
+
     fun getMapByProfile(confType: ConfType, projectName: String, profile: String): Map<String, Any> {
         var config :ProjectConfig?
         var map :Map<String, Any>? = null
@@ -59,7 +68,8 @@ object SpringConfigStore {
                 }
                 map = config.configValuesByProfile[profile]
                 if (map == null) {
-                    throw GradleException("project: '${projectName}' has no ${confType.logText} values for profile '${profile}' defined!")
+                    //throw GradleException("project: '${projectName}' has no ${confType.logText} values for profile '${profile}' defined!")
+                    return emptyMap()
                 }
             }
             ConfType.ENV -> {
@@ -75,6 +85,10 @@ object SpringConfigStore {
         }
         return map
     }
+}
+
+fun getSpringActiveProfiles(projectName: String): String {
+    return SpringConfigStore.getSpringActiveProfiles(projectName).joinToString(",")
 }
 
 fun getSpringAppConfig(projectName: String, compoundKey: String): String {
@@ -186,24 +200,25 @@ private fun loadConfigs(env: String, confType: ConfType, projectName: String, va
             continue
         }
         for (data in parser.loadAll(File(configFile).inputStream())) {
-            var profileNames = linkedSetOf("default")
+            var profileNames = mutableListOf("default")
             @Suppress("UNCHECKED_CAST")
             var map = data as Map<String, Any>
             if (map.containsKey("spring")) {
                 @Suppress("UNCHECKED_CAST")
                 var mapSpring = map["spring"] as Map<String, Any>
                 if ( mapSpring.containsKey("profiles") ) {
-                    profileNames = linkedSetOf()
                     val springProfiles = mapSpring["profiles"]
                     if(springProfiles is String) {
+                        profileNames = mutableListOf()
                         profileNames.addAll(springProfiles.split(','))
                     } else if(springProfiles is List<*>) {
+                        profileNames = mutableListOf()
                         for(profile in springProfiles) {
                             profileNames.add(profile as String)
                         }
                     }
                 }
-                if (SpringConfigStore.getOrCreate(confType, projectName).profilesActive.intersect(profileNames).isNotEmpty()) {
+                if ( (profileNames[0] == "default") || (SpringConfigStore.getOrCreate(confType, projectName).profilesActive.intersect(profileNames).isNotEmpty()) ) {
                     val springProfilesInclude = mapSpring["profiles.include"]
                     if(springProfilesInclude != null) {
                         if(springProfilesInclude is String) {
@@ -214,7 +229,7 @@ private fun loadConfigs(env: String, confType: ConfType, projectName: String, va
                             }
                         }
                     }
-                }
+                } // else inactive profile(s)
             }
             // remember profile names
             SpringConfigStore.getOrCreate(confType, projectName).profileNames.addAll(profileNames)

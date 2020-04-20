@@ -9,7 +9,7 @@ metadata:
   annotations:
     kubernetes.io/ingress.class: #@ data.values.ingress.controller
     #@yaml/text-templated-strings
-    (@= data.values.ingress.controller @).ingress.kubernetes.io/rewrite-target: #@ data.values.ingress.rewrite-target
+    (@= data.values.ingress.controller @).ingress.kubernetes.io/rewrite-target: #@ data.values.ingress.rewrite_target
 spec:
   rules:
   - http:
@@ -25,3 +25,4 @@ spec:
         backend:
           serviceName: #@ "{}-{}".format(data.values.name, "service")
           servicePort: #@ data.values.http_svc_port
+

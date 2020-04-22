@@ -26,7 +26,7 @@ declare -a theCmds=()
 declare -i port=8079
 for tier in sink tier2 tier1 source ; do
   ((port+=1))
-  theCmd="${debug}SERVER_PORT=$port SPRING_PROFILES_ACTIVE=local,$tier$additionalProfiles build/libs/minimal_microservice-0.1.0.${POSTFIX}.jar --spring.application.name=microservice_$tier --app.businessLogic.tier=$tier --logging.file=microservice_$tier.log"
+  theCmd="${debug}SERVER_PORT=$port SPRING_PROFILES_ACTIVE=local,$tier$additionalProfiles java -jar build/libs/minimal_microservice-0.1.0.${POSTFIX}.jar --spring.application.name=microservice_$tier --app.businessLogic.tier=$tier --logging.file=microservice_$tier.log"
   echo $theCmd
   if [ ! "$justEcho" = true ]; then
     theCmds+=("$theCmd")

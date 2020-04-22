@@ -12,7 +12,7 @@ environment:
     user: systemProp.defaultAdminUser
     pass: systemProp.defaultAdminPass
   docker:
-    registry: "registry.gitlab.com/hoffisregistry/scratch"
+    registry: "registry.gitlab.com/hoffi_scratch/scratch" # "registry.gitlab.com/hoffisregistry/scratch"
   cloudfoundry:
     target: "https://api.local.pcfdev.io"
     baseURL: "local.pcfdev.io"

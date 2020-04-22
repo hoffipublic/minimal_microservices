@@ -5,14 +5,16 @@
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
-  name:  #@ "{}-{}".format(data.values.name, "ingress")
+  name: #@ "{}-{}".format(data.values.name, "ingress")
+  labels: #@ data.values.ingress_labels
   annotations:
     kubernetes.io/ingress.class: #@ data.values.ingress.controller
     #@yaml/text-templated-strings
     (@= data.values.ingress.controller @).ingress.kubernetes.io/rewrite-target: #@ data.values.ingress.rewrite_target
 spec:
   rules:
-  - http:
+  - host: ""
+    http:
       paths:
       - path: /greet
         backend:

@@ -19,9 +19,15 @@ pluginManagement {
             if (requested.id.id == "org.springframework.boot") {
                 val springBootVersion = "2.3.0.M4"
                 println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-                println("./settings.gradle.kts resoutionStrategy { \"org.springframework.boot\" } ==> spring-boot-gradle-plugin:${springBootVersion}")
+                println("./settings.gradle.kts resoutionStrategy  \"org.springframework.boot\"  ==>  ${springBootVersion}")
                 println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
                 useModule("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+            }else if (requested.id.id == "org.springframework.cloud.contract") {
+                val springCloudContractVersion = "3.0.0.M1"
+                println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+                println("./settings.gradle.kts resoutionStrategy  \"org.springframework.cloud.contract\"  ==>  ${springCloudContractVersion}")
+                println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+                useModule("org.springframework.cloud:spring-cloud-contract-gradle-plugin:${springCloudContractVersion}")
             }
         }
     }

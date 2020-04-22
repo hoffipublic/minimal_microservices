@@ -1,9 +1,10 @@
 plugins {
     id("eclipse")
     id("idea")
-    id("org.springframework.boot") version "${v.springBootLatest}" apply false
-    // id("org.springframework.boot") apply false // if using milestone or snapshots use this line instead of above and configure version in ./settings.gradle.kts
-    id("org.springframework.cloud.contract") version "${v.springCloudContractLatest}" apply false
+    id("org.springframework.boot") apply false // if using milestone or snapshots use this line instead of above and configure version in ./settings.gradle.kts
+    // id("org.springframework.boot") version "${v.springBootLatest}" apply false
+    id("org.springframework.cloud.contract")  apply false // if using milestone or snapshots use this line instead of above and configure version in ./settings.gradle.kts
+    //id("org.springframework.cloud.contract") version "${v.springCloudContractLatest}" apply false
     id("com.gorylenko.gradle-git-properties") version "${v.gitPropertiesPlugin}" apply false
     id("com.google.cloud.tools.jib") version "${v.jibPlugin}" apply false
     // id("maven-publish") // needed for com.jfrog.artifactory
@@ -61,9 +62,9 @@ subprojects {
     // dependencyManagement {
     configure<io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtension> {
         imports {
-            mavenBom(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES)
-            mavenBom("org.springframework.cloud:spring-cloud-dependencies:${v.springCloudLatest}")
-            mavenBom("org.springframework.cloud:spring-cloud-contract-dependencies:${v.springCloudContractLatest}")
+            //mavenBom(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES)
+            mavenBom("org.springframework.cloud:spring-cloud-dependencies:${v.Latest.Milestone.springCloud.version}")
+            mavenBom("org.springframework.cloud:spring-cloud-contract-dependencies:${v.Latest.Milestone.springCloudContract.version}")
         }
     }
 
@@ -78,8 +79,11 @@ subprojects {
             // println("Groovy version: " + GroovySystem.getVersion())
             println("javac  version: " + org.gradle.internal.jvm.Jvm.current()) // + " with compiler args: " + options.compilerArgs)
             println("versions of core dependencies:")
-            val regex = Regex(pattern = "^(spring-cloud-starter|spring-boot-starter)-[0-9].*$")
+            val regex = Regex(pattern = "^(spring-boot-starter|spring-cloud-starter)-[0-9].*$")
             project.configurations.findByName("compileClasspath")?.map { it.name }?.filter { it.matches(regex) }
+                    ?.forEach { println("  " + it.replace(".jar", "")) }
+            val testRegex = Regex(pattern = "^(spring-cloud-starter-contract-(verifier|stub-runner))-[0-9].*$")
+            project.configurations.findByName("testRuntimeClasspath")?.map { it.name }?.filter { it.matches(testRegex) }
                     ?.forEach { println("  " + it.replace(".jar", "")) }
         }
     }

@@ -42,9 +42,7 @@ The project is a gradle multi-project (defined in settings.gradle).
 
 The service containing the microservice app is under `microservice`
 
-Versions of dependencies will be read from a local `dependencies.json` file in the root folder. \
-You can get my version of it from [my github dependencies project](https://github.com/hoffipublic/gradle_dependencies) \
-(e.g. checkout this project also and do softlink the `dependencies.json` file into `minimal_microservices` root folder)
+Versions of dependencies will be read from ./buildSrc/src/main/kotlin/v/dependencies.kt
 
 ### starting the applications
 a bash script for starting (or dryrun output) all 4 Layer Applications) from within ./microservice/ \
@@ -79,7 +77,6 @@ SERVER_PORT=8083 SPRING_PROFILES_ACTIVE=local,source \
 
 e.g. by
 - curl -sSL https://zipkin.io/quickstart.sh | bash -s
-- chmod 755 zipkin.jar
 - java -jar zipkin.jar
 
 Access the zipkin UI under `https://<zipkinServerIP>:9411`
@@ -221,7 +218,7 @@ so all the *\_interesting\_* implementation things reside inside subproject-fold
 
 ### spring-cloud-contract Consumer-Driven-Contracts (CDC) Testing
 
-
+`<tbd>`
 
 
 
@@ -230,52 +227,11 @@ so all the *\_interesting\_* implementation things reside inside subproject-fold
 
 ## miscellaneous stuff
 
-### dependencies.json for gradle look like this:
+`<tbd>`
 
-```json
-{
-    "latest": {
-        "default": {
-            "_comment": "default versions",
-            "springBootVersion": "2.1.8.RELEASE",
-            "springCloudVersion": "Greenwich.SR2",
-            "springJaegerCloud": "2.0.3",
-            "jaegerClientVersion": "0.35.5", "_comment1": "latest pre 1.0.0 was 0.35.5",
-            "springCloudContractVersion": "2.1.3.RELEASE",
-            "logbackVersion": "1.2.3",     "_comment1": "https://github.com/qos-ch/logback/releases",
-            "graphqlJavaVersion": "13.0",
-            "graphqlSpringVersion": "1.0",
-            "snakeYamlVersion": "1.24",
-            "braveInstrumentationVersion": "5.6.9",
-            "commonsLang3Version": "3.9",
-            "picocliVersion": "4.0.1",      "_comment1": "https://github.com/remkop/picocli/releases",
-            "junitJupiterVersion": "5.5.2", "_comment1": "https://github.com/junit-team/junit5/releases",
-        },
-        "snapshots": {
-            "_comment": "snapshot dependencies not available in mavenCentral/jcenter",
-            "springCloudCircuitbreakerSnapshotVersion": "1.0.0.BUILD-SNAPSHOT",
-        },
-        "plugin": {
-            "_comment": "gradle plugin versions",
-            "dependencyManagementPluginVersion": "1.0.8.RELEASE", "_comment1": "https://github.com/spring-gradle-plugins/dependency-management-plugin/releases",
-            "propdepsPluginVersion": "0.0.9.RELEASE", "_comment1": "https://github.com/spring-gradle-plugins/propdeps-plugin/releases",
-            "cfGradlePluginVersion": "1.1.3",         "_comment1": "to be replaced by https://github.com/pivotalservices/ya-cf-app-gradle-plugin",
-            "dockerPluginVersion": "5.0.0",           "_comment1": "https://github.com/bmuschko/gradle-docker-plugin/releases",
-            "artifactoryPluginVersion": "latest",     "_comment1": "https://bintray.com/jfrog/jfrog-jars/build-info-extractor-gradle",
-            "jenkinsPluginVersion": "1.3.6",          "_comment1": "https://github.com/ghale/gradle-jenkins-plugin/releases",
-        },
-        "groovy": {
-            "_comment": "groovy versions",
-            "groovyAllVersion": "2.5.8",
-            "spockVersion": "1.3-groovy-2.5"
-        },
-        "gradle": {
-            "_comment": "gradle version",
-            "gradleVersion": "5.6.2"
-        }
-    }
-}
-```
 
+
+<br/>
+<br/>
 
 <style type="text/css"> /* automatic heading numbering */ h1 { counter-reset: h2counter; font-size: 24pt; } h2 { counter-reset: h3counter; font-size: 22pt; margin-top: 2em; } h3 { counter-reset: h4counter; font-size: 16pt; } h4 { counter-reset: h5counter; font-size: 14pt; } h5 { counter-reset: h6counter; } h6 { } h2:before { counter-increment: h2counter; content: counter(h2counter) ".\0000a0\0000a0"; } h3:before { counter-increment: h3counter; content: counter(h2counter) "." counter(h3counter) ".\0000a0\0000a0"; } h4:before { counter-increment: h4counter; content: counter(h2counter) "." counter(h3counter) "." counter(h4counter) ".\0000a0\0000a0"; } h5:before { counter-increment: h5counter; content: counter(h2counter) "." counter(h3counter) "." counter(h4counter) "." counter(h5counter) ".\0000a0\0000a0"; } h6:before { counter-increment: h6counter; content: counter(h2counter) "." counter(h3counter) "." counter(h4counter) "." counter(h5counter) "." counter(h6counter) ".\0000a0\0000a0"; } </style>

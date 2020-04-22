@@ -1,0 +1,26 @@
+#@ load("@ytt:overlay", "overlay")
+#@ load("@ytt:data", "data")
+
+#@overlay/match by=overlay.subset({"kind": "Deployment"}),expects="1+"
+---
+metadata:
+  name: #@ "{}-{}-{}".format(data.values.name, data.values.tier, "deployment")
+spec:
+  selector:
+    matchLabels:
+      appname: #@ "{}-{}".format(data.values.name, data.values.tier)
+  template:
+    metadata:
+      labels:
+        appname: #@ "{}-{}".format(data.values.name, data.values.tier)
+    spec:
+      containers:
+      #@overlay/match by="name"
+      - name: #@ "{}-{}".format(data.values.name, "container")
+        env:
+        #@overlay/match by="name"
+        - name: SPRING_PROFILES_ACTIVE
+          value: #@ "{},{}{}".format("k8s", data.values.tier, data.values.additionalProfiles)
+        #@overlay/match by="name",missing_ok=True
+        - name: app.businessLogic.tier
+          value: #@ data.values.tier

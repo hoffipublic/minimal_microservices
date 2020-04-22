@@ -1,0 +1,7 @@
+#@ load("@ytt:overlay", "overlay")
+#@ load("@ytt:data", "data")
+
+#@overlay/match by=overlay.subset({"kind": "Service"}),expects="1+"
+---
+metadata:
+  name: #@ "{}-{}-{}".format(data.values.name, data.values.tier, "service")

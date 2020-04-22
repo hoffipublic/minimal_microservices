@@ -6,7 +6,7 @@ tasks.register("generateK8s") {
     description = "generate ytt data files and use ytt and templates in ./ytt/templates/ to generate to ./generated/"
 
     val env: String by project.rootProject.extra
-    val archivesBaseName: String by project.rootProject.extra
+    val archivesBaseName: String by project.extra
     val repo:  String by project.rootProject.extra
     val repoHttps: String by project.rootProject.extra
 
@@ -25,20 +25,31 @@ tasks.register("generateK8s") {
             #@overlay/match-child-defaults missing_ok=True
             ---
             name: ${projectK8sName}
+            tier: default
             depl_labels:
               appname: ${projectK8sName}
-              tier: frontend
+              tier: default
             depl_matchLabels:
               appname: ${projectK8sName}
+              tier: default
             depl_template_labels:
               appname: ${projectK8sName}
+              tier: default
             depl_container_image: ${projectK8sName}:${v.versionNumber}
-            spring_profiles_active: ${spring.getSpringActiveProfiles(project.name)}
             docker_registry: ${dockerRegistry}
+            spring_profiles_active: ${spring.getSpringActiveProfiles(project.name)}
 
             svc_enabled: true
+            svc_labels:
+              svc_appname: ${projectK8sName}
+              tier: default
             svc_selector:
               appname: ${projectK8sName} #! same as depl_labels appname
+              tier: default
+
+            ingress_labels:
+              ingress_appname: ${projectK8sName}
+              tier: default
         """.trimIndent()
 
         val yttTemplatesDirname = "${project.projectDir}/ytt/templates"
@@ -55,11 +66,13 @@ tasks.register("generateK8s") {
         if (!destDirGeneratedData.mkdir()) {
             destDirGeneratedData.listFiles { file -> file.isFile() && file.name.matches(Regex("^.*\\.ya?ml$")) }.forEach { println("wiped: " + "ytt/generated/${it.name}"); it.delete() }
         }
+        val operatorsDirName = "${project.projectDir}/ytt/operators"
+        File(operatorsDirName).mkdir()
 
         val yttDataValuesFilename = "${destDirGeneratedDataDirname}/${archivesBaseName}-DataValues.yml"
         File(yttDataValuesFilename).writeText(dataValues)
 
-        var yttCmd = listOf("ytt", "-f", yttEnvVarsDefaultsFilename, "-f", yttEnvVarsFilename, "-f", destDirGeneratedDataDirname, "-f", yttTemplatesDirname, "--output-directory", destDirName)
+        var yttCmd = listOf("ytt", "-f", yttEnvVarsDefaultsFilename, "-f", yttEnvVarsFilename, "-f", destDirGeneratedDataDirname, "-f", yttTemplatesDirname, "-f", operatorsDirName , "--output-directory", destDirName)
 
         println(yttCmd.map { it.replace(Regex("^${project.projectDir}"), ".") }.joinToString(" "))
         project.exec {

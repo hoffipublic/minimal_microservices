@@ -280,7 +280,7 @@ configure<JibExtension> {
         }
         container {
             labels = kotlin.collections.mapOf("maintainer" to "Dirk.Hoffmann@dell.com", "key2" to "value2")
-            format = com.google.cloud.tools.jib.api.ImageFormat.OCI
+            format = com.google.cloud.tools.jib.api.buildplan.ImageFormat.OCI
             //args = listOf("some", "args")
             ports = kotlin.collections.listOf("8080")
             //jvmFlags = listOf("-Xms512m", "-Xdebug", "-Xmy:flag=jib-rules")
@@ -288,7 +288,4 @@ configure<JibExtension> {
             creationTime = "USE_CURRENT_TIMESTAMP"
         }
 }
-
-// bootRun { systemProperties = System.properties } // ensure Gradle passes command line arguments to the JVM
-
 

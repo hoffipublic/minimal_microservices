@@ -18,7 +18,7 @@ spring.loadEnvConfigs(env, project.name,
 )
 println("")
 println("some spring config properties examples:")
-println("application.yml property 'spring.sleuth.baggage-keys' = '${spring.getSpringAppConfig(project.name, "spring.sleuth.baggage-keys")}'")
+println("application.yml property 'spring.sleuth.baggage.correlation-fields' = '${spring.getSpringAppConfig(project.name, "spring.sleuth.baggage.correlation-fields")}'")
 println("environment.artifactory.url = '${spring.getEnvConfig(project.name, "environment.artifactory.url")}'")
 
 dependencies {

@@ -8,8 +8,9 @@ logging:
   pattern:
     # MDC values have to be EXACTLY like in spring.sleuth.xxx-keys and whitelisted-mdc-keys
     # original from org.springframework.cloud.sleuth.autoconfig.TraceEnvironmentPostProcessor
-  # level: "%5p [${spring.zipkin.service.name:${spring.application.name:-}},%X{X-B3-TraceId:-},%X{X-B3-SpanId:-},%X{X-Span-Export:-}]"
-    level: "%5p [${spring.zipkin.service.name:${spring.application.name:-}},%X{X-B3-TraceId:-},%X{X-B3-SpanId:-},%X{X-Span-Export:-}] [%X{ddd:-},%X{bp:-},%X{bpids:-}] [%X{op:-},%X{chunk:-},%X{i:-}]"
+  # 3.0+
+  # level: "%5p [${spring.zipkin.service.name:${spring.application.name:}},%X{traceId:-},%X{spanId:-}]"
+    level: "%5p [${spring.zipkin.service.name:${spring.application.name:}},%X{traceId:-},%X{spanId:-}] [%X{ddd:-},%X{bp:-},%X{bpids:-}] [%X{op:-},%X{chunk:-},%X{i:-}]"
 
 spring:
   #main:
@@ -18,6 +19,8 @@ spring:
   jmx:
     enabled: false
   sleuth:
+    enabled: true
+    trace-id128: false
     opentracing:
       enabled: true
     sampler:
@@ -25,34 +28,37 @@ spring:
     annotation:
       enabled: true
     # keys that travel with inter-process calls (see BAGGAGEKEY.java)
-    # these keys will be prefix by "baggage-" (if http) or "baggage_" (if messaging)
-    baggage-keys:
-    - bpids
-    - ddd
-    - bp
-    local-keys: # keys that are only propagated within the app
-    - op
-    - chunk
-    - i
-    # keys that travel with inter-process calls (see MDCKEY.java)
-    # these keys will not be prefixed
-    propagation-keys: # keys that travel with inter-process calls unprefixed
-    # - empty
-    log:
-      slf4j:
-        whitelisted-mdc-keys: # (baggage|propagation)-keys that are copied to slf4j MDC for logging
-        - bpids
-        - ddd
-        - bp
-        - op
-        - chunk
-        - i
+    baggage:
+      remote-fields:
+      - bpids
+      - ddd
+      - bp
+      local-fields: # keys that are only propagated within the app
+      - op
+      - chunk
+      - i
+      tag-fields: # (remote|local)-fields that are tagged to a span
+      - bpids
+      - ddd
+      - bp
+      - op
+      - chunk
+      - i
+      correlation-enabled: true
+      correlation-fields: # (remote|local)-fields that are copied to slf4j MDC for logging
+      - bpids
+      - ddd
+      - bp
+      - op
+      - chunk
+      - i
+    scheduled:
+      enabled: true
     rxjava:
       schedulers:
         ignoredthreads:
         - HystrixMetricPoller
         - ^RxComputation.*$
-        - ^RxIoScheduler.*$
   zipkin:
     enabled: true
     base-url: ${ZIPKIN_URL:http://localhost:9411} # http://localhost:14268/api/traces #

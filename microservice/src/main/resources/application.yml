@@ -235,9 +235,9 @@ spring:
   profiles: k8s
   cloud:
     stream:
-      default-binder: local_rabbit
+      default-binder: k8s_rabbit
       binders:
-        local_rabbit:
+        k8s_rabbit:
           type: rabbit
           environment:
             spring:
@@ -246,3 +246,8 @@ spring:
 #                username: <username>
 #                password: <password>
 #                virtual-host: /
+  zipkin:
+    enabled: true
+    base-url: ${ZIPKIN_URL:http://zipkin-service:9411} # http://localhost:14268/api/traces #
+    sender:
+      type: web

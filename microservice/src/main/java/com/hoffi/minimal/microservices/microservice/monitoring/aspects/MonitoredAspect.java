@@ -3,11 +3,17 @@ package com.hoffi.minimal.microservices.microservice.monitoring.aspects;
 import java.lang.reflect.Method;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+
+import com.hoffi.minimal.microservices.microservice.businesslogic.BusinessLogic;
 import com.hoffi.minimal.microservices.microservice.monitoring.annotations.Monitored;
+import com.hoffi.minimal.microservices.microservice.tracing.ChunkScoped;
+import com.hoffi.minimal.microservices.microservice.tracing.TracingHelper;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -19,6 +25,7 @@ import io.micrometer.core.instrument.Timer;
 @Aspect
 @Component
 public class MonitoredAspect {
+    private static Logger log = LoggerFactory.getLogger(MonitoredAspect.class);
     private static final String GAUGETYPE = "GAUGE";
     private static final String COUNTERTYPE = "COUNTER";
     private static final String TIMERTYPE = "TIMER";
@@ -39,6 +46,9 @@ public class MonitoredAspect {
     @Autowired
     private AllMetersMap allMetersMap;
 
+    @Autowired
+    private TracingHelper tracingHelper;
+
     public Set<String> initialisedMonitors = ConcurrentHashMap.newKeySet(8);
     
     private long previousCallTime;
@@ -50,21 +60,28 @@ public class MonitoredAspect {
      */
     @Around("@annotation(com.hoffi.minimal.microservices.microservice.monitoring.annotations.Monitored)")
     public Object monitorMethod(ProceedingJoinPoint joinPoint) throws Throwable {
-        this.previousCallTime = lastCallTime;
-        this.lastCallTime = System.currentTimeMillis();
-        String[] annotationValueQualified = getAnnotationValueQualified(joinPoint);
-        initOrSkipMonitored(annotationValueQualified);
+        String opName = this.getClass().getSimpleName() + '.' +  new Object() {}.getClass().getEnclosingMethod().getName(); // this method name
+        Timer.Sample sample = null;
+        String[] annotationValueQualified = null;
+        try(ChunkScoped chunkScoped = tracingHelper.startChunk(opName)) {
+            this.previousCallTime = lastCallTime;
+            this.lastCallTime = System.currentTimeMillis();
+            annotationValueQualified = getAnnotationValueQualified(joinPoint);
+            initOrSkipMonitored(annotationValueQualified);
 
-        getCounter(annotationValueQualified, counterName).increment();
-        Timer.Sample sample = Timer.start(meterRegistry);
+            getCounter(annotationValueQualified, counterName).increment();
+            sample = Timer.start(meterRegistry);
+        }
 
         Object proceed = joinPoint.proceed();
 
-        sample.stop(getTimer(annotationValueQualified, timerName));
-        getGauge(annotationValueQualified, sinceLastName).value();
-        getGauge(annotationValueQualified, sincePreviousName).value();
+        try(ChunkScoped chunkScoped = tracingHelper.startChunk(opName)) {
+            sample.stop(getTimer(annotationValueQualified, timerName));
+            getGauge(annotationValueQualified, sinceLastName).value();
+            getGauge(annotationValueQualified, sincePreviousName).value();
 
-        System.out.println(joinPoint.getSignature() + " executed in " + (System.currentTimeMillis()-this.lastCallTime) +"ms");
+            log.info("{} executed in {}ms", joinPoint.getSignature(), (System.currentTimeMillis() - this.lastCallTime));
+        }
         return proceed;
     }
 

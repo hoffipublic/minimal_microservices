@@ -14,7 +14,7 @@ object Latest {
         springBoot("2.2.6.RELEASE",           MAVEN, MAVEN2, "org.springframework.boot",     "spring-boot-dependencies"),
         springCloud("Hoxton.SR3",             MAVEN, MAVEN2, "org.springframework.cloud",    "spring-cloud-dependencies"),
         springCloudContract("2.2.2.RELEASE",  MAVEN, MAVEN2, "org.springframework.cloud",    "spring-cloud-starter-contract-verifier"),
-        resilience4j("1.3.1",                 MAVEN, MAVEN2, "io.github.resilience4j",       "resilience4j-spring-boot2"),
+        resilience4j("1.4.0",                 MAVEN, MAVEN2, "io.github.resilience4j",       "resilience4j-spring-boot2"),
         logback("1.2.3",                      MAVEN, MAVEN2, "ch.qos.logback",               "logback-core"),
         graphqlJava("14.0",                   MAVEN, MAVEN2, "com.graphql-java",             "graphql-java"),
         graphqlSpring("7.0.1",                MAVEN, MAVEN2, "com.graphql-java-kickstart",   "graphql-spring-boot-starter"),

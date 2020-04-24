@@ -19,7 +19,7 @@ public class ChunkScoped implements Closeable {
         this.span = span;
         this.chunkName = chunkName;
         this.spanAnnotateEndChunk = spanAnnotateEndChunk;
-        this.formerChunkName = tracingHelper.getBaggage(tracingHelper.activeSpan(), MDCKEY.CHUNK);
+        this.formerChunkName = tracingHelper.getBaggage(tracingHelper.activeSpan(), BAGGAGE_LOCAL_KEY.CHUNK);
     }
 
     /** close of ChunkScoped (if used within a new childSpan) has to be called AFTER childSpan.finish() */
@@ -28,9 +28,10 @@ public class ChunkScoped implements Closeable {
         // close of ChunkScoped (if used within a new childSpan) has to be called AFTER childSpan.finish()
         if(spanAnnotateEndChunk) {
             tracingHelper.annotate(span, TracingHelper.END_CHUNK_PREFIX + chunkName);
-            tracingHelper.setBaggage(tracingHelper.activeSpan(), MDCKEY.CHUNK, formerChunkName);
-            MDC.put( MDCKEY.CHUNK.toString(), formerChunkName);
         }
+        tracingHelper.setBaggage(tracingHelper.activeSpan(), BAGGAGE_LOCAL_KEY.CHUNK, formerChunkName);
+        tracingHelper.setBaggage(BAGGAGE_LOCAL_KEY.CHUNK, formerChunkName);
+        MDC.put( BAGGAGE_LOCAL_KEY.CHUNK.toString(), formerChunkName);
     }
 
 }

@@ -36,7 +36,7 @@ import annotations.TrivialTest;
 import brave.Span;
 import testhelpers.DTOhelpers;
 
-@ActiveProfiles("tier1")
+@ActiveProfiles({"test", "tier1"})
 // @TestPropertySource(properties = { "spring.application.name=microservice_tier1",
 //         "app.businessLogic.tier=tier1", "eureka.client.enabled=false", "spring.cloud.config.enabled=false",
 //         "management.endpoints.enabled-by-default=false", "management.endpoints.web.exposure.exclude='*''",

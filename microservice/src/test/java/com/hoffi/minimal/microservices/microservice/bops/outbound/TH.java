@@ -6,8 +6,8 @@ import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
 public class TH {
 
     public static final String REF_BOBID = "42";
-    public static final String REF_BOB_DOMAIN = "myCurrentBDomain";
-    public static final String REF_BOB_PROCESS = "myBProcessName";
+    public static final String REF_BOB_DOMAIN = "td";
+    public static final String REF_BOB_PROCESS = "tp";
     public static final String REF_BOB_INSTANCE = "i0";
     public static final String REF_BOB_INSTANCE_PLAIN = "0";
     public static final String REF_BOB_OPERATION = "timerMessageSource";

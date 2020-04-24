@@ -30,7 +30,7 @@ public class Source {
     @Value("${app.info.instance_index}")
     private String instanceIndex;
 
-    /** for encapsulating as much tracer specifics as possible
+    /** encapsulating as much tracer specifics as possible into TracingHelper
      * to keep the business logic (imports) as clean as possible from implementation specif tracing details */
     @Autowired
     private TracingHelper tracingHelper;

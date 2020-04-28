@@ -33,10 +33,10 @@ public class RefreshableScheduler implements SchedulingConfigurer {
         taskRegistrar.setScheduler(taskExecutor());
         taskRegistrar.addTriggerTask(() -> {
             try {
-                source.timerMessageSource();
+                source.timerMessageSource(); // this will be called
             } catch (Exception e) {
                 log.error("Exception on calling source.timerMessageSource() in RefreshableScheduler", e);
-            } // this will be called
+            }
         }, triggerContext -> {
             if (springEnv.acceptsProfiles(Profiles.of("unscheduled"))) {
                 return null;

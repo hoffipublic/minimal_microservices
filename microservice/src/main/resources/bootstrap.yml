@@ -42,7 +42,15 @@ management:
         resilience4j.circuitbreaker.calls: true
 
 ---
+spring:
+  profiles: test
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "info,health"
 
+---
 spring:
   profiles: local
   cloud:

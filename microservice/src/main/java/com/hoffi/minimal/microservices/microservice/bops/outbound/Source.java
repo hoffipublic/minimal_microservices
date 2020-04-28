@@ -86,7 +86,8 @@ public class Source {
 
     /** fallback method for timerMessageSource (same method signature with added Throwable param) */
     public void timerMessageSourceFallback(RuntimeException ex) throws Exception {
-        log.warn(String.format("FALLBACK because of: '%s'", ex.getMessage()));
+        log.warn(String.format("FALLBACK because of: '%s': '%s'", ex.getClass().getSimpleName(), ex.getMessage()));
+        log.warn("FALLBACK Exception:", ex);
     }
 
 

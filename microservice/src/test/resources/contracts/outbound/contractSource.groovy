@@ -17,9 +17,9 @@ So this contract should be picked up in Contract tests of `@ActiveProfiles({"tie
 		sentTo("minimal-SourceTo1")
 		body('''{ "seq" : "42", "message" : "per contract fromSource", "modifications" : "" }''')
 		headers {
-			header('baggage_ddd', 'testBPDomain')
-			header('baggage_bp', 'testBProcess')
-			header('baggage_bpids', '43,44')
+			header('ddd', 'testBPDomain')
+			header('bp', 'testBProcess')
+			header('bpids', '43,44')
 			messagingContentType(applicationJson())
 		}
 	}

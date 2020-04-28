@@ -12,7 +12,7 @@ const val PLUGIN = "plugin"
 object Latest {
     enum class Release(val version: String, val repo: String, val path: String, val group: String, val artifact: String) {
         springBoot("2.2.6.RELEASE",           MAVEN, MAVEN2, "org.springframework.boot",     "spring-boot-dependencies"),
-        springCloud("Hoxton.SR3",             MAVEN, MAVEN2, "org.springframework.cloud",    "spring-cloud-dependencies"),
+        springCloud("Hoxton.SR4",             MAVEN, MAVEN2, "org.springframework.cloud",    "spring-cloud-dependencies"),
         springCloudContract("2.2.2.RELEASE",  MAVEN, MAVEN2, "org.springframework.cloud",    "spring-cloud-starter-contract-verifier"),
         resilience4j("1.4.0",                 MAVEN, MAVEN2, "io.github.resilience4j",       "resilience4j-spring-boot2"),
         logback("1.2.3",                      MAVEN, MAVEN2, "ch.qos.logback",               "logback-core"),
@@ -52,9 +52,9 @@ object Latest {
         gitProperties("2.2.2",                GRADLEPLUGINS, PLUGIN, "", "com.gorylenko.gradle-git-properties"),
         jib("2.2.0",                          GRADLEPLUGINS, PLUGIN, "", "com.google.cloud.tools.jib")
     }
-    enum class Groovy(val version: String) {
-        groovyAll("2.5.9"), // groovyAll("3.0.2"),
-        spock("1.3-groovy-2.5") // spock("2.0-M2-groovy-3.0")
+    enum class Groovy(val version: String, val repo: String, val path: String, val group: String, val artifact: String) {
+        groovyAll("2.5.11",     MAVEN, MAVEN2, "org.codehaus.groovy",     "groovy-all"), // groovyAll("2.5.11"),
+        spock("1.3-groovy-2.5", MAVEN, MAVEN2, "org.spockframework",      "spock-core") // spock("1.3-groovy-2.5")
     }
 }
 

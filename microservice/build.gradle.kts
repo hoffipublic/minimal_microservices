@@ -29,6 +29,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.cloud:spring-cloud-starter")
 
+    implementation("org.springframework.cloud:spring-cloud-loadbalancer")
+
     implementation("org.springframework.boot:spring-boot-starter-aop")
     // implementation("io.github.resilience4j:resilience4j-spring-boot2:${v.resilience4jLatest}")
     implementation("io.github.resilience4j:resilience4j-spring-cloud2:${v.resilience4jLatest}")
@@ -63,7 +65,9 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api")
     testImplementation("org.junit.jupiter:junit-jupiter-params")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
-    testImplementation("org.springframework.cloud:spring-cloud-stream-test-support") // messaging test support for spring-cloud-stream
+    // deprecated since 3.0
+//    testImplementation("org.springframework.cloud:spring-cloud-stream-test-support") // messaging test support for spring-cloud-stream
+    testImplementation("org.springframework.cloud", "spring-cloud-stream", classifier = "test-binder")
     // spring-cloud-contract
     // API implementor (procucer) side
     testImplementation("org.springframework.cloud:spring-cloud-starter-contract-verifier")
@@ -86,41 +90,74 @@ apply(from = project.rootProject.projectDir.toString() + "/buildfiles/buildK8s.g
 // //apply(from = project.rootProject.projectDir.toString() + "/buildfiles/buildJenkins.gradle")
 // apply(from = project.rootProject.projectDir.toString() + "/buildfiles/buildVscode.gradle")
 
-// publishing {
-//     // gradle publishToMavenLocal
-//     // find ~/.m2/repository -type f -name '*microservices*' | xargs ls -lh | sed -E 's/^(.*) \/.*\.m2\/repository\/(.*)/\1 \2/'
-//     publications {
-//         maven(MavenPublication) {
-//             groupId = groupId
-//             artifactId = project.ext.archiveBaseName
-//             version = version
+// Starting from Gradle 6.2, Gradle performs a sanity check before uploading, to make sure you don’t
+// upload stale files (files produced by another build). This introduces a problem with Spring Boot
+// applications which are uploaded using the components.java component:
+// Artifact my-application-0.0.1-SNAPSHOT.jar wasn't produced by this build.
+// This is caused by the fact that the main jar task is disabled by the Spring Boot application, and the
+// component expects it to be present. Because the bootJar task uses the same file as the main jar task by default,
+configurations {
+    val jar by tasks.existing
+    val bootJar by tasks.existing
+    listOf(apiElements, runtimeElements).forEach { provider ->
+        provider.get().outgoing.artifacts.removeIf {
+            it.buildDependencies.getDependencies(null).contains(jar)
+        }
+//        provider.get().outgoing.artifact(bootJar.get())
+        println(String.format("%s/libs/%s-%s.jar", project.buildDir, archivesBaseName, version))
+        provider.get().outgoing.artifact(File(String.format("%s/libs/%s-%s.jar", project.buildDir, archivesBaseName, version)))
+    }
+}
+configure<org.gradle.api.publish.PublishingExtension> {
+    // gradle publishToMavenLocal
+    // find ~/.m2/repository -type f -name '*microservice*' | xargs ls -lh | sed -E 's/^(.*) \/.*\.m2\/repository\/(.*)/\1 \2/'
+    publications {
+        val archivesBaseName: String by project.extra
+        val theVersion = version as String
+        create<MavenPublication>("maven") {
+            groupId = project.rootProject.group as String?
+//            artifactId = archivesBaseName
+            version = theVersion
+            from(components["java"])
+            afterEvaluate {
+                artifactId = tasks.bootJar.get().archiveBaseName.get()
+            }
+        }
+        create<MavenPublication>("stubs") {
+            groupId = project.rootProject.group as String?
+//            artifactId = archivesBaseName
+            version = theVersion
+            val verifierStubsJar by tasks.existing
+            artifact(verifierStubsJar.get())
+//            println(String.format("%s/libs/%s-%s-stubs.jar", project.buildDir, archivesBaseName, theVersion))
+//            artifact(File(String.format("%s/libs/%s-%s-stubs.jar", project.buildDir, archivesBaseName, theVersion)))
+            afterEvaluate {
+                artifactId = tasks.bootJar.get().archiveBaseName.get()
+            }
 
-//             from components.java
-//         }
-// 		stubs(MavenPublication) {
-// 			//artifactId "${archiveBaseName}-stubs"
-// 			artifactId project.ext.archiveBaseName
-// 			artifact verifierStubsJar
-// 		}
-//     }
-//     //   repositories {
-//     //        maven {
-//     //            credentials { ... }
-//     //
-//     //            if (project.version.endsWith("-SNAPSHOT"))
-//     //                url "http://localhost:8081/artifactory/libs-snapshot-local"
-//     //            else
-//     //                url "http://localhost:8081/artifactory/libs-release-local"
-//     //        }
-//     //    }
-    
-// }
-// build.finalizedBy publishToMavenLocal // push jars to mavenLocal after build
+        }
+    }
+    //   repositories {
+    //        maven {
+    //            credentials { ... }
+    //
+    //            if (project.version.endsWith("-SNAPSHOT"))
+    //                url "http://localhost:8081/artifactory/libs-snapshot-local"
+    //            else
+    //                url "http://localhost:8081/artifactory/libs-release-local"
+    //        }
+    //    }
 
-// whatIsPublished(group:publishing, description:"what is published to maven repo") {
-//    doLast {
-//    find /Users/hoffmd9/.m2/repository -type f -name '*minimal_microservicess*' | xargs ls -l
-//    }
+}
+val build by tasks.existing {
+    val publishToMavenLocal by tasks.existing
+    dependsOn(publishToMavenLocal) // push jars to mavenLocal after build
+}
+
+//whatIsPublished(group:publishing, description:"what is published to maven repo") {
+//   doLast {
+//   find /Users/hoffmd9/.m2/repository -type f -name '*minimal_microservicess*' | xargs ls -l
+//   }
 //}
 //publishToMavenLocal.finalizedBy whatIsPublished
 //publishPubNamePublicationToMavenLocal.finalizedBy whatIsPublished
@@ -128,6 +165,12 @@ apply(from = project.rootProject.projectDir.toString() + "/buildfiles/buildK8s.g
 // contracts {
 configure<org.springframework.cloud.contract.verifier.plugin.ContractVerifierExtension> {
     setTestFramework(TestFramework.JUNIT5)
+//    val archivesBaseName: String by project.extra
+//    contractDependency {
+//        setGroupId(project.group as String?)
+//        setArtifactId(archivesBaseName)
+//        setVersion(project.version)
+//    }
     baseClassForTests.set("com.hoffi.minimal.microservices.microservice.contractbaseclasses.DefaultBaseClass")
     baseClassMappings {
         // matching path below src/test/resources/contracts/

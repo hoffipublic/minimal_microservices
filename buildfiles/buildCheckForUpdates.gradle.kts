@@ -63,6 +63,36 @@ tasks.register("checkForUpdates") {
             println("")
         }
         println("")
+        println("Groovy:")
+        for(d in v.Latest.Groovy.values()) {
+            if(d.repo == null || d.repo == "") continue
+            val url = "${d.repo}/${d.path}/${d.group.replace('.', '/')}/${d.artifact}/"
+            val text = java.net.URL("${url}maven-metadata.xml").readText()
+            val regexLatest = Regex("<latest>(.*)</latest>", RegexOption.MULTILINE)
+            val regexRelease = Regex("<release>(.*)</release>", RegexOption.MULTILINE)
+            val regexVersions = Regex(".*<version>(.*)</version>", setOf(RegexOption.MULTILINE, RegexOption.UNIX_LINES))
+            var latestMatchResult = regexLatest.find(text)
+            var releaseMatchResult = regexRelease.find(text)
+            var versionsSet = regexVersions.findAll(text)
+            val lastVersion = versionsSet.mapNotNull{ match -> match.groupValues[1] }.findLast{
+                ! it.contains(Regex("(alpha|beta|\\d\\d\\d\\d-\\d\\d-\\d\\d)"))
+            }
+
+            print(String.format("%-29s: current: %-19s", d.name, d.version))
+            var latest = "not found"
+            var release = "not found"
+            if(latestMatchResult != null) latest = latestMatchResult.groupValues[1]
+            if(releaseMatchResult != null) release = releaseMatchResult.groupValues[1]
+
+            if((d.version == release) || (d.version == lastVersion))  {
+                print(" up-to-date")
+            } else {
+                print(String.format(" latest: %-19s release: %-19s lastVersionRef: %-19s", latest.take(19), release.take(19), lastVersion))
+            }
+            print("    ${url}")
+            println("")
+        }
+        println("")
         println("Plugins:")
         for(d in v.Latest.Plugin.values()) {
             if(d.repo == null || d.repo == "") continue

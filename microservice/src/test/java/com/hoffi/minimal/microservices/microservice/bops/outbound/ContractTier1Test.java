@@ -18,9 +18,11 @@ import org.springframework.cloud.contract.stubrunner.spring.StubRunnerProperties
 import org.springframework.cloud.contract.verifier.messaging.internal.ContractVerifierMessage;
 import org.springframework.cloud.contract.verifier.messaging.internal.ContractVerifierMessaging;
 import org.springframework.cloud.contract.verifier.messaging.internal.ContractVerifierObjectMapper;
+import org.springframework.cloud.stream.binder.test.TestChannelBinderConfiguration;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
-@ActiveProfiles({"tier1"})
+@ActiveProfiles({"test", "tier1"})
 //@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @SpringBootTest
 // (
@@ -30,6 +32,7 @@ import org.springframework.test.context.ActiveProfiles;
         stubsMode = StubRunnerProperties.StubsMode.LOCAL
         )
 @AutoConfigureCache
+@Import(TestChannelBinderConfiguration.class)
 public class ContractTier1Test {
     @Autowired
     StubTrigger stubTrigger;
@@ -53,12 +56,12 @@ public class ContractTier1Test {
         ContractVerifierMessage response = contractVerifierMessaging.receive("minimal-1To2");
         assertNotNull(response);
 
-        assertNotNull(response.getHeader("baggage_ddd"));
-        assertEquals("testBPDomain", response.getHeader("baggage_ddd").toString());
-        assertNotNull(response.getHeader("baggage_bp"));
-        assertEquals("testBProcess", response.getHeader("baggage_bp").toString());
-        assertNotNull(response.getHeader("baggage_bpids"));
-        assertEquals("43,44", response.getHeader("baggage_bpids").toString());
+        assertNotNull(response.getHeader("ddd"));
+        assertEquals("testBPDomain", response.getHeader("ddd").toString());
+        assertNotNull(response.getHeader("bp"));
+        assertEquals("testBProcess", response.getHeader("bp").toString());
+        assertNotNull(response.getHeader("bpids"));
+        assertEquals("43,44", response.getHeader("bpids").toString());
         assertNotNull(response.getHeader("contentType"));
         assertEquals("application/json", response.getHeader("contentType").toString());
         // and:

@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 import brave.Span;
 import brave.Tracer;
 import brave.Tracer.SpanInScope;
-import brave.propagation.ExtraFieldPropagation;
 
 @Component
 public class TracingHelper {
@@ -235,12 +234,24 @@ public class TracingHelper {
         MDC.put(BAGGAGE_LOCAL_KEY.CHUNK.toString(), newChunkName);
     }
 
-    public Span annotate(Span span, String event) { return span.annotate(event); }
+    public Span annotate(Span span, String event) {
+        if (span != null) {
+            return span.annotate(event);
+        } else {
+            log.warn("cannot annotate as span is null for event: '{}'", event);
+            return null;
+        }
+    }
     public Span tag(String key, String value) {
         return tag(activeSpan(), key, value);
     }
     public Span tag(Span span, String key, String value) {
-        return span.tag(key, value);
+        if (span != null) {
+            return span.tag(key, value);
+        } else {
+            log.warn("cannot tag as span is null for key/value '{}/{}'", key, value);
+            return null;
+        }
     }
 
 

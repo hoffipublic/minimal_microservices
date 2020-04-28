@@ -15,15 +15,18 @@ import org.springframework.boot.test.autoconfigure.core.AutoConfigureCache;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.contract.verifier.messaging.MessageVerifier;
 import org.springframework.cloud.contract.verifier.messaging.boot.AutoConfigureMessageVerifier;
+import org.springframework.cloud.stream.binder.test.TestChannelBinderConfiguration;
+import org.springframework.context.annotation.Import;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.test.context.ActiveProfiles;
 
-@ActiveProfiles({"source", "unscheduled"})
+@ActiveProfiles({"test", "source", "unscheduled"})
 @SpringBootTest(properties = {"--spring.autoconfigure.exclude="})
 @AutoConfigureCache
 @AutoConfigureMessageVerifier
 // @DirtiesContext // instead of properties = { "--spring.autoconfigure.exclude="}
+@Import(TestChannelBinderConfiguration.class)
 public abstract class SourceBaseClass {
 	@Autowired
 	@Qualifier(SourceChannels.OUTPUT)
@@ -58,8 +61,8 @@ public abstract class SourceBaseClass {
 
 		sourceChannels.sourceOutput()
 				.send(MessageBuilder.withPayload(referenceMessageDTO)
-						.setHeaderIfAbsent("baggage_ddd", "testBPDomain")
-						.setHeaderIfAbsent("baggage_bp", "testBProcess")
-						.setHeaderIfAbsent("baggage_bpids", "43,44").build());
+						.setHeaderIfAbsent("ddd", "testBPDomain")
+						.setHeaderIfAbsent("bp", "testBProcess")
+						.setHeaderIfAbsent("bpids", "43,44").build());
 	}
 }

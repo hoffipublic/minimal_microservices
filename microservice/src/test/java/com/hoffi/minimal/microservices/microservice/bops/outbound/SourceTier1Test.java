@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+
+import com.hoffi.minimal.microservices.microservice.bops.channels.SourceChannels;
 import com.hoffi.minimal.microservices.microservice.bops.channels.Tier1Channels;
 import com.hoffi.minimal.microservices.microservice.common.dto.MessageDTO;
 import com.hoffi.minimal.microservices.microservice.tracing.SpanScoped;
@@ -154,8 +156,9 @@ class SourceTier1Test extends DTOhelpers {
         assertThat(receivedMessage).isNotNull();
 
         // extract receivedDTO from message and do assertions
-        String payload = (String) receivedMessage.getPayload();
-        MessageDTO receivedDTO = json.parse(payload).getObject();
+        byte[] receivedBytes = (byte[])receivedMessage.getPayload();
+        MessageDTO receivedDTO = json.parse(receivedBytes).getObject();
+
 
         // @formatter:off
         Assertions.assertAll(

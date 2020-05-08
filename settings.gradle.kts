@@ -17,7 +17,7 @@ pluginManagement {
     resolutionStrategy {
         eachPlugin {
             if (requested.id.id == "org.springframework.boot") {
-                val springBootVersion = "2.3.0.M4"
+                val springBootVersion = "2.3.0.RC1"
                 println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
                 println("./settings.gradle.kts resoutionStrategy  \"org.springframework.boot\"  ==>  ${springBootVersion}")
                 println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")

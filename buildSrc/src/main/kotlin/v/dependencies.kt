@@ -19,7 +19,7 @@ object Latest {
         graphqlJava("14.0",                   MAVEN, MAVEN2, "com.graphql-java",             "graphql-java"),
         graphqlSpring("7.0.1",                MAVEN, MAVEN2, "com.graphql-java-kickstart",   "graphql-spring-boot-starter"),
         snakeYaml("1.26",                     MAVEN, MAVEN2, "org.yaml",                     "snakeyaml"),
-        jacksonModuleKotlin("2.10.3",         MAVEN, MAVEN2, "com.fasterxml.jackson.module", "jackson-module-kotlin"),
+        jacksonModuleKotlin("2.11.0",         MAVEN, MAVEN2, "com.fasterxml.jackson.module", "jackson-module-kotlin"),
         braveInstrumentation("5.11.2",        MAVEN, MAVEN2, "io.zipkin.brave",              "brave-instrumentation-parent"),
         commonsLang3("3.10",                   MAVEN, MAVEN2, "org.apache.commons",           "commons-lang3"),
         commonsText("1.8",                    MAVEN, MAVEN2, "org.apache.commons",           "commons-text"),
@@ -27,7 +27,7 @@ object Latest {
         junitJupiter("5.6.1",                 MAVEN, MAVEN2, "org.junit.jupiter",            "junit-jupiter")
     }
     enum class Milestone (val version: String, val repo: String, val path: String, val group: String, val artifact: String) {
-        springBoot("2.3.0.M4",                SPRING, MS, "org.springframework.boot", "spring-boot-dependencies"),
+        springBoot("2.3.0.RC1",                SPRING, MS, "org.springframework.boot", "spring-boot-dependencies"),
         springCloud("2020-1.M1",              SPRING, MS, "org.springframework.cloud", "spring-cloud-dependencies"),
         springCloudCircuitbreaker("2.0.0.M1", SPRING, MS, "org.springframework.cloud", "spring-cloud-circuitbreaker-dependencies"),
         springSleuth("3.0.0.M1",              SPRING, MS, "org.springframework.cloud", "spring-cloud-sleuth-dependencies"),

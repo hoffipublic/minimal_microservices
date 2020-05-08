@@ -143,6 +143,9 @@ spring:
         minimal-SourceTo1: # has to match channels.SourceChannels.OUTPUT
           destination: minimal-SourceTo1
           contentType: application/json
+  zipkin:
+    service:
+      name: mm-source
 
 resilience4j:
   circuitbreaker:
@@ -166,6 +169,9 @@ spring:
         minimal-1To2: # has to match channels.SourceChannels.OUTPUT
           destination: minimal-1To2
           contentType: application/json
+  zipkin:
+    service:
+      name: mm-tier1
 
 resilience4j:
   circuitbreaker:
@@ -195,6 +201,9 @@ spring:
         minimal-2ToSink: # has to match channels.Tier2Channels.OUTPUT
           destination: minimal-2ToSink
           contentType: application/json
+  zipkin:
+    service:
+      name: mm-tier2
 
 resilience4j:
   circuitbreaker:
@@ -221,6 +230,9 @@ spring:
           group: sink
           destination: minimal-2ToSink
           contentType: application/json
+  zipkin:
+    service:
+      name: mm-sink
 
 ---
 spring:

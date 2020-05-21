@@ -1,8 +1,8 @@
 plugins {
     id("eclipse")
     id("idea")
-    id("org.springframework.boot") apply false // if using milestone or snapshots use this line instead of above and configure version in ./settings.gradle.kts
-    // id("org.springframework.boot") version "${v.springBootLatest}" apply false
+    //id("org.springframework.boot") apply false // if using milestone or snapshots use this line instead of above and configure version in ./settings.gradle.kts
+    id("org.springframework.boot") version "${v.springBootLatest}" apply false
     id("org.springframework.cloud.contract")  apply false // if using milestone or snapshots use this line instead of above and configure version in ./settings.gradle.kts
     //id("org.springframework.cloud.contract") version "${v.springCloudContractLatest}" apply false
     id("com.gorylenko.gradle-git-properties") version "${v.gitPropertiesPlugin}" apply false

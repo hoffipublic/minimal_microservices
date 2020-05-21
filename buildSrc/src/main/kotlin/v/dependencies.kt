@@ -11,7 +11,7 @@ const val PLUGIN = "plugin"
 // singleton definitions
 object Latest {
     enum class Release(val version: String, val repo: String, val path: String, val group: String, val artifact: String) {
-        springBoot("2.2.6.RELEASE",           MAVEN, MAVEN2, "org.springframework.boot",     "spring-boot-dependencies"),
+        springBoot("2.3.0.RELEASE",           MAVEN, MAVEN2, "org.springframework.boot",     "spring-boot-dependencies"),
         springCloud("Hoxton.SR4",             MAVEN, MAVEN2, "org.springframework.cloud",    "spring-cloud-dependencies"),
         springCloudContract("2.2.2.RELEASE",  MAVEN, MAVEN2, "org.springframework.cloud",    "spring-cloud-starter-contract-verifier"),
         resilience4j("1.4.0",                 MAVEN, MAVEN2, "io.github.resilience4j",       "resilience4j-spring-boot2"),
@@ -20,14 +20,14 @@ object Latest {
         graphqlSpring("7.0.1",                MAVEN, MAVEN2, "com.graphql-java-kickstart",   "graphql-spring-boot-starter"),
         snakeYaml("1.26",                     MAVEN, MAVEN2, "org.yaml",                     "snakeyaml"),
         jacksonModuleKotlin("2.11.0",         MAVEN, MAVEN2, "com.fasterxml.jackson.module", "jackson-module-kotlin"),
-        braveInstrumentation("5.11.2",        MAVEN, MAVEN2, "io.zipkin.brave",              "brave-instrumentation-parent"),
+        braveInstrumentation("5.12.3",        MAVEN, MAVEN2, "io.zipkin.brave",              "brave-instrumentation-parent"),
         commonsLang3("3.10",                   MAVEN, MAVEN2, "org.apache.commons",           "commons-lang3"),
         commonsText("1.8",                    MAVEN, MAVEN2, "org.apache.commons",           "commons-text"),
-        picocli("4.2.0",                      MAVEN, MAVEN2, "info.picocli",                 "picocli"),
+        picocli("4.3.2",                      MAVEN, MAVEN2, "info.picocli",                 "picocli"),
         junitJupiter("5.6.1",                 MAVEN, MAVEN2, "org.junit.jupiter",            "junit-jupiter")
     }
     enum class Milestone (val version: String, val repo: String, val path: String, val group: String, val artifact: String) {
-        springBoot("2.3.0.RC1",                SPRING, MS, "org.springframework.boot", "spring-boot-dependencies"),
+        springBoot("2.4.0.MS1",               SPRING, MS, "org.springframework.boot", "spring-boot-dependencies"),
         springCloud("2020-1.M1",              SPRING, MS, "org.springframework.cloud", "spring-cloud-dependencies"),
         springCloudCircuitbreaker("2.0.0.M1", SPRING, MS, "org.springframework.cloud", "spring-cloud-circuitbreaker-dependencies"),
         springSleuth("3.0.0.M1",              SPRING, MS, "org.springframework.cloud", "spring-cloud-sleuth-dependencies"),
@@ -41,6 +41,7 @@ object Latest {
         springCloudContract("3.0.0.M1", "", "", "", "")
     }
     enum class Plugin(val version: String, val repo: String, val path: String, val group: String, val artifact: String) {
+        springBoot("2.3.0.RELEASE",           GRADLEPLUGINS, PLUGIN, "", "org.springframework.boot"),
         kotlin("1.3.72",                      GRADLEPLUGINS, PLUGIN, "", "org.jetbrains.kotlin.jvm"),
         dependencyManagement("1.0.9.RELEASE", GRADLEPLUGINS, PLUGIN, "", "io.spring.dependency-management"),
         springCloudContract("2.2.2.RELEASE",  GRADLEPLUGINS, PLUGIN, "", "org.springframework.cloud.contract"), 
@@ -50,7 +51,7 @@ object Latest {
         artifactory("4.15.2",                 GRADLEPLUGINS, PLUGIN, "", "com.jfrog.artifactory"), //("latest"),
         jenkins("1.3.6",                      GRADLEPLUGINS, PLUGIN, "", "com.terrafolio.jenkins"),
         gitProperties("2.2.2",                GRADLEPLUGINS, PLUGIN, "", "com.gorylenko.gradle-git-properties"),
-        jib("2.2.0",                          GRADLEPLUGINS, PLUGIN, "", "com.google.cloud.tools.jib")
+        jib("2.3.0",                          GRADLEPLUGINS, PLUGIN, "", "com.google.cloud.tools.jib")
     }
     enum class Groovy(val version: String, val repo: String, val path: String, val group: String, val artifact: String) {
         groovyAll("2.5.11",     MAVEN, MAVEN2, "org.codehaus.groovy",     "groovy-all"), // groovyAll("2.5.11"),
